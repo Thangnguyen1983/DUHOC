@@ -1,0 +1,11 @@
+ALTER TABLE public.staff_profiles ADD COLUMN staff_code text;
+ALTER TABLE public.sales_agents ADD COLUMN collaborator_code text;
+CREATE SEQUENCE public.kaizen_staff_code_seq;
+CREATE SEQUENCE public.kaizen_collaborator_code_seq;
+CREATE UNIQUE INDEX staff_profiles_staff_code_unique ON public.staff_profiles (staff_code) WHERE staff_code IS NOT NULL;
+CREATE UNIQUE INDEX sales_agents_collaborator_code_unique ON public.sales_agents (collaborator_code) WHERE collaborator_code IS NOT NULL;
+CREATE OR REPLACE FUNCTION public.set_kaizen_person_code() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$ BEGIN IF TG_TABLE_NAME = 'staff_profiles' AND NEW.staff_code IS NULL THEN NEW.staff_code := 'KZ-NV-' || to_char(clock_timestamp(), 'YYMM') || '-' || lpad(nextval('public.kaizen_staff_code_seq')::text, 4, '0'); ELSIF TG_TABLE_NAME = 'sales_agents' AND NEW.collaborator_code IS NULL THEN NEW.collaborator_code := 'KZ-CTV-' || to_char(clock_timestamp(), 'YYMM') || '-' || lpad(nextval('public.kaizen_collaborator_code_seq')::text, 4, '0'); END IF; RETURN NEW; END $$;
+CREATE TRIGGER set_staff_code_before_insert BEFORE INSERT ON public.staff_profiles FOR EACH ROW EXECUTE FUNCTION public.set_kaizen_person_code();
+CREATE TRIGGER set_collaborator_code_before_insert BEFORE INSERT ON public.sales_agents FOR EACH ROW EXECUTE FUNCTION public.set_kaizen_person_code();
+COMMENT ON COLUMN public.staff_profiles.staff_code IS 'Automatically generated immutable Kaizen employee identifier.';
+COMMENT ON COLUMN public.sales_agents.collaborator_code IS 'Automatically generated immutable Kaizen collaborator identifier.';

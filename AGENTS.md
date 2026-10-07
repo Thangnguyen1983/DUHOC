@@ -1,0 +1,15 @@
+# Quy tắc cấu trúc
+- Điều hướng học viên và giáo viên dùng cùng danh sách đường dẫn cho sidebar desktop và ngăn kéo điện thoại; hai cổng giữ menu riêng để không lẫn chức năng.
+- Bảng hồ sơ học viên cuộn ngang trong khung riêng ở màn hình nhỏ, không ép toàn trang rộng theo bảng.
+- Biểu mẫu in hồ sơ giấy lấy dữ liệu từ phiếu lưu kho và bảng kiểm hiện có, không tạo danh mục song song để tránh lệch thông tin.
+- Mã nhân sự và cộng tác viên được cấp tại bảng nghiệp vụ hiện có bằng chuỗi độc lập và duy nhất để giữ nguyên liên kết tài khoản, không tạo hồ sơ nhân sự song song.
+- Mọi thao tác đọc/ghi hồ sơ học viên qua quyền máy chủ phải lọc theo phòng ban được phân công, kể cả bảng kiểm, lưu kho, nhật ký và xuất hồ sơ; ẩn menu không thay thế kiểm quyền dữ liệu.
+- Người phụ trách nghiệp vụ được chọn từ tài khoản nhân sự hiện có trong khu phân quyền và lưu riêng với quyền quản trị; tên hiển thị trên biên bản không thay thế thao tác phê duyệt có xác thực.
+- PDF chứng chỉ phải dùng số chứng chỉ do cơ sở dữ liệu cấp sau khi ghi sổ để tránh lệch số trên bản in và bản ghi.
+- Quy trình nghiệp vụ từng bước là dữ liệu tĩnh trong src/lib/help/workflows.ts, liên kết của từng bước được bài kiểm tra tự động đối chiếu với trang có thật; tiến độ chỉ lưu trên trình duyệt vì không phải bản ghi phê duyệt.
+- Mọi lời gọi AI đi qua src/lib/ai/external-ai.server.ts (aiFetch/getAiModel) với khoá riêng của Kaizen; hãng và mẫu đọc từ site_settings.ai_config, không gọi trực tiếp cổng AI của nền tảng để có thể đổi hãng mà không sửa mã.
+- Trợ lý ảo chỉ đọc dữ liệu qua công cụ đã kiểm quyền và phạm vi phòng ban, không tự ghi dữ liệu; bản soạn thảo do người dùng tự lưu.
+- Hoa hồng CTV ghi ở collaborator_commissions gắn với hồ sơ học viên và sales_agents, chỉ đọc/ghi qua hàm máy chủ có lọc phòng ban.
+- Nhân sự (hợp đồng, nghỉ phép, chấm công, KPI, lương) gắn theo user_id tài khoản, ghi qua src/lib/hr/hr.functions.ts có kiểm quyền + phạm vi phòng ban; người dùng chỉ đọc trực tiếp bản ghi của mình (phiếu lương chỉ khi đã khoá) để dữ liệu lương không lộ chéo.
+- Cổng CTV nhận diện CTV qua sales_agents.user_id + collaborator_code; ứng viên CTV gửi vào consultations (source='ctv', campaign_code=mã CTV) để đi chung luồng Lead, không tạo bảng song song.
+- Cấu hình nhân sự (phép năm, giờ muộn, công chuẩn, bảo hiểm, thuế TNCN, cách chấm công) lưu ở site_settings.hr_config, đọc qua src/lib/hr/hr-config.server.ts; việc kiểm tra định vị/wifi/QR/ảnh chấm công làm ở máy chủ để nhân viên không vượt qua từ trình duyệt.

@@ -1,0 +1,322 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-brand-red: var(--brand-red);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-green: var(--brand-green);
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* KAIZEN official brand */
+  --brand-red: #C92026;
+  --brand-red-dark: #A8161B;
+  --brand-green: #3F7D3A;
+  --brand-gold: #3F7D3A; /* legacy alias → maps to official green */
+
+  --background: #FFFFFF;
+  --foreground: #222222;
+  --card: #FFFFFF;
+  --card-foreground: #222222;
+  --popover: #FFFFFF;
+  --popover-foreground: #222222;
+
+  --primary: #C92026;
+  --primary-foreground: #FFFFFF;
+  --secondary: #3F7D3A;
+  --secondary-foreground: #FFFFFF;
+
+  --muted: #F5F5F5;
+  --muted-foreground: #6B7280;
+  --accent: #FBECEC;
+  --accent-foreground: #C92026;
+
+  --destructive: #C92026;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #C92026;
+
+  --gradient-brand: linear-gradient(135deg, #C92026 0%, #A8161B 100%);
+  --shadow-brand: 0 18px 40px -18px rgba(201, 32, 38, 0.30);
+  --shadow-soft: 0 10px 30px -15px rgba(17, 24, 39, 0.10);
+  --shadow-header: 0 1px 0 0 #E5E7EB, 0 4px 20px -10px rgba(17, 24, 39, 0.06);
+  --surface: #FAFAF7;
+  --line: #E5E7EB;
+}
+
+@utility serif-display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.005em;
+}
+@utility text-balance { text-wrap: balance; }
+@utility eyebrow-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brand-red);
+}
+@utility gradient-brand { background-image: var(--gradient-brand); }
+@utility text-gradient-brand {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility shadow-brand { box-shadow: var(--shadow-brand); }
+@utility shadow-soft { box-shadow: var(--shadow-soft); }
+
+@utility btn-premium {
+  @apply h-12 rounded-none bg-primary px-7 text-sm font-semibold tracking-wide text-primary-foreground transition-all hover:bg-primary/90;
+}
+@utility btn-outline-premium {
+  @apply h-12 rounded-none border-2 border-primary bg-transparent px-7 text-sm font-semibold tracking-wide text-primary transition-all hover:bg-primary hover:text-primary-foreground;
+}
+
+.dark {
+  --background: oklch(0.16 0.02 250);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.22 0.02 250);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.22 0.02 250);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.65 0.22 25);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.58 0.14 156);
+  --secondary-foreground: oklch(0.99 0 0);
+  --muted: oklch(0.27 0.02 250);
+  --muted-foreground: oklch(0.72 0.02 250);
+  --accent: oklch(0.27 0.04 156);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.65 0.22 28);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.65 0.22 25);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+}
+
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee-left { animation: marquee-left 40s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-left { animation: none; }
+}
+
+/* Tabs nhiều mục: cuộn ngang gọn và mượt trên màn hình nhỏ. */
+.tabs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--primary) 45%, transparent) transparent;
+  scroll-padding-inline: 0.375rem;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs-scroll::-webkit-scrollbar { height: 0.25rem; }
+.tabs-scroll::-webkit-scrollbar-track { background: transparent; }
+.tabs-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 45%, transparent);
+}
+
+/* Chế độ in: chỉ in nội dung chính, ẩn thanh bên/header/nút điều hướng */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0 !important; }
+  section, article, header.rounded-xl { break-inside: avoid; }
+  * { box-shadow: none !important; }
+}
+
+/* Khung ảnh trong nội dung bài viết */
+.article-body :is(p, div) > img,
+.article-body figure > img {
+  display: block;
+  margin-inline: auto;
+  max-height: 70vh;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--muted);
+  box-shadow: 0 1px 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+  cursor: zoom-in;
+  transition: box-shadow 0.3s ease, transform 0.4s ease;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .article-body :is(p, div) > img:hover,
+  .article-body figure > img:hover {
+    transform: scale(1.01);
+    box-shadow: 0 18px 40px -18px color-mix(in oklab, var(--foreground) 45%, transparent);
+  }
+}
+
+.article-body figure { margin-block: 2rem; }
+
+.article-body .figure-grid {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+  margin-block: 2rem;
+}
+@media (min-width: 640px) {
+  .article-body .figure-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.article-body .figure-grid > figure { margin-block: 0; }
+
+.article-body figcaption {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+
+
+/* ===== Trang giám sát lớp: hiệu ứng mượt, màu theo token hiện hữu ===== */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-lift {
+  animation: fade-up 0.35s ease-out both;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+@media (hover: hover) {
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
+    border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
+  }
+}
+.card-lift:active { transform: translateY(0.5px); }
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.skeleton-shimmer { animation: skeleton-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .card-lift { animation: none; transition: none; }
+  .card-lift:hover { transform: none; }
+  .skeleton-shimmer { animation: none; }
+}
+
+/* ===== Admin sidebar: icon 3D theo tông màu ===== */
+@utility nav-chip {
+  display: grid;
+  place-items: center;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  color: oklch(0.99 0 0);
+  background-image: linear-gradient(160deg, var(--nav-c1, oklch(0.72 0.15 25)) 0%, var(--nav-c2, oklch(0.52 0.17 25)) 100%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 55%),
+    inset 0 -1px 2px oklch(0 0 0 / 22%),
+    0 2px 5px -1px color-mix(in oklab, var(--nav-c2, oklch(0.52 0.17 25)) 45%, transparent);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+@utility nav-chip-sm {
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 0.45rem;
+}
+.group\/nav:hover .nav-chip,
+.group\/navgroup:hover .nav-chip {
+  transform: translateY(-1.5px) scale(1.06);
+  filter: saturate(1.2) brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 70%),
+    inset 0 -1px 2px oklch(0 0 0 / 22%),
+    0 6px 12px -2px color-mix(in oklab, var(--nav-c2, oklch(0.52 0.17 25)) 60%, transparent);
+}
+/* nhấn giữ: chìm xuống như nút vật lý */
+.group\/nav:active .nav-chip,
+.group\/navgroup:active .nav-chip {
+  transform: translateY(1px) scale(0.96);
+  filter: saturate(1.05) brightness(0.96);
+  box-shadow:
+    inset 0 2px 4px oklch(0 0 0 / 32%),
+    0 1px 2px -1px color-mix(in oklab, var(--nav-c2, oklch(0.52 0.17 25)) 40%, transparent);
+}
+/* mục đang mở: giữ trạng thái nổi + viền sáng */
+.nav-active .nav-chip {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 75%),
+    0 0 0 2px color-mix(in oklab, var(--nav-c1, oklch(0.72 0.15 25)) 35%, transparent),
+    0 6px 14px -3px color-mix(in oklab, var(--nav-c2, oklch(0.52 0.17 25)) 60%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-chip { transition: none; }
+  .group\/nav:hover .nav-chip,
+  .group\/navgroup:hover .nav-chip,
+  .group\/nav:active .nav-chip,
+  .group\/navgroup:active .nav-chip,
+  .nav-active .nav-chip { transform: none; }
+}
+
+@utility nav-tone-red { --nav-c1: oklch(0.70 0.19 27); --nav-c2: oklch(0.51 0.19 27); }
+@utility nav-tone-amber { --nav-c1: oklch(0.83 0.16 78); --nav-c2: oklch(0.64 0.16 60); }
+@utility nav-tone-pink { --nav-c1: oklch(0.75 0.19 350); --nav-c2: oklch(0.55 0.20 340); }
+@utility nav-tone-blue { --nav-c1: oklch(0.75 0.14 240); --nav-c2: oklch(0.53 0.17 250); }
+@utility nav-tone-green { --nav-c1: oklch(0.79 0.16 155); --nav-c2: oklch(0.55 0.15 158); }
+@utility nav-tone-indigo { --nav-c1: oklch(0.72 0.15 285); --nav-c2: oklch(0.50 0.18 285); }
+@utility nav-tone-orange { --nav-c1: oklch(0.82 0.16 62); --nav-c2: oklch(0.62 0.19 42); }
+@utility nav-tone-slate { --nav-c1: oklch(0.74 0.03 250); --nav-c2: oklch(0.50 0.04 255); }
+@utility nav-tone-teal { --nav-c1: oklch(0.80 0.13 190); --nav-c2: oklch(0.55 0.13 195); }
+@utility nav-tone-violet { --nav-c1: oklch(0.74 0.16 305); --nav-c2: oklch(0.52 0.19 300); }
+@utility nav-tone-cyan { --nav-c1: oklch(0.80 0.13 215); --nav-c2: oklch(0.56 0.15 230); }

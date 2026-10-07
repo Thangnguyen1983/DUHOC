@@ -1,0 +1,1 @@
+UPDATE public.page_banners SET badge_label = NULL, badge_icon = NULL WHERE page_key LIKE 'du-hoc:%';
