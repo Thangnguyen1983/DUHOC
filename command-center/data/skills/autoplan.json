@@ -1,0 +1,124 @@
+{
+  "name": "autoplan",
+  "group": "orchestration",
+  "purposeVi": "Đường ống tự động chạy lần lượt các skill review (CEO -> Design -> DX -> Eng) trên một kế hoạch, tự trả lời các câu hỏi trung gian bằng 6 nguyên tắc quyết định, chỉ dồn những quyết định 'gu' (taste) và 'thách thức người dùng' lên một cổng duyệt cuối. Mỗi phase có hai tiếng nói độc lập (Claude subagent và Codex).",
+  "whenToUse": "Khi người dùng muốn chạy toàn bộ chuỗi review mà không phải trả lời 15-30 câu hỏi trung gian ('auto review', 'autoplan', 'run all reviews', 'make the decisions for me'). Khi đã có plan file.",
+  "inputs": [
+    {
+      "name": "sourcePlan",
+      "type": "đường dẫn tuyệt đối plan file",
+      "required": true,
+      "description": "Kế hoạch gốc; được sao lưu nguyên byte làm restore point."
+    },
+    {
+      "name": "activePlan",
+      "type": "đường dẫn",
+      "required": false,
+      "description": "Plan do host cấp; mặc định = sourcePlan; nơi lưu sửa đổi và hồ sơ review."
+    },
+    {
+      "name": "designDoc",
+      "type": "file từ gstack-design-doc-find",
+      "required": false,
+      "description": "Dùng làm đầu vào bối cảnh."
+    },
+    {
+      "name": "uiScope",
+      "type": "boolean (phát hiện >=2 thuật ngữ view)",
+      "required": false,
+      "description": "Quyết định có chạy phase Design."
+    },
+    {
+      "name": "dxScope",
+      "type": "boolean (scope tool: dxRequired, --developer-tool, --agent-primary)",
+      "required": false,
+      "description": "Quyết định có chạy phase DX."
+    },
+    {
+      "name": "outsideConfig",
+      "type": "gstack-config codex_reviews",
+      "required": false,
+      "description": "Có bật Codex không; vắng mặt thì ghi N/A, không tính CONFIRMED."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Phase 0: Intake + restore point",
+      "instructionSummary": "Xác định SOURCE_PLAN/ACTIVE_PLAN, tạo RESTORE_PATH trong .gstack/tmp/autoplan (git-ignored), chạy snapshot tool init (một lệnh Bash riêng, đường dẫn tuyệt đối). Đọc CLAUDE.md, TODOS.md, git log, design doc; phát hiện phạm vi UI và DX bằng công cụ scope; tìm các skill review; bỏ qua các mục đã được autoplan xử lý (preamble, scope gate, outside voice của skill con...). Thông báo tóm tắt."
+    },
+    {
+      "title": "Phase 0.5: Preflight reviewer ngoài",
+      "instructionSummary": "Kiểm tra Codex có sẵn/bật; ghi nhận trạng thái theo từng phase (completed/unavailable/disabled/skipped); luôn giữ lượt review native."
+    },
+    {
+      "title": "Phase 1: CEO review",
+      "instructionSummary": "Đọc đầy đủ methodology plan-ceo-review; ép chế độ SELECTIVE EXPANSION; thực hiện Step 0 (kể cả Spec Review Loop), tạo amendment checkpoint, snapshot đầu vào, chạy Claude CEO subagent rồi Codex CEO voice, lập bảng đồng thuận 6 chiều, sau đó chạy đủ 11 mục review với auto-decide; xuất các output bắt buộc; đóng phase."
+    },
+    {
+      "title": "Phase 2: Design review (nếu có UI)",
+      "instructionSummary": "Chạy 7 pass của plan-design-review với hai tiếng nói; lỗi cấu trúc tự sửa, thẩm mỹ -> TASTE; litmus scorecard. Bỏ qua kèm thông báo nếu không có UI."
+    },
+    {
+      "title": "Phase 2.5: DX review (nếu có bề mặt dev)",
+      "instructionSummary": "Chạy DX ở chế độ POLISH: persona suy ra, benchmark, magical moment chi phí thấp nhất, 8 pass; bảng đồng thuận DX; xuất journey map, empathy narrative, scorecard, checklist, TTHW."
+    },
+    {
+      "title": "Phase 3: Eng review (luôn CHẠY CUỐI)",
+      "instructionSummary": "Scope challenge không bao giờ giảm (P2); hai tiếng nói; bảng đồng thuận 6 chiều; kiến trúc, code quality, test review (không bao giờ nén; ghi test plan), performance; gom TODO hoãn từ mọi phase."
+    },
+    {
+      "title": "Đóng phase (phase-close)",
+      "instructionSummary": "Với mỗi phase: lưu review, ghi yêu cầu đã chấp nhận vào khối autoplan-accepted, prepare-close tạo packet bất biến, ĐỌC toàn bộ packet, kiểm chứng ngữ nghĩa, gửi thông báo phase hoàn tất cho người dùng (tin nhắn riêng), rồi mới sang phase kế."
+    },
+    {
+      "title": "Decision Audit Trail và Pre-gate verification",
+      "instructionSummary": "Mỗi quyết định tự động ghi một dòng (phase, quyết định, phân loại, nguyên tắc, lý do, phương án bị loại). Kiểm tra mọi output bắt buộc từng phase, tối đa 2 lần sửa."
+    },
+    {
+      "title": "Phase 4: Final Approval Gate",
+      "instructionSummary": "Tổng hợp task từ JSONL các phase, trình bày: tóm tắt, số quyết định, User Challenges, Taste choices, điểm review, chủ đề xuyên phase, mục hoãn. Hỏi: Approve / Approve with overrides / Resolve challenges / Interrogate / Revise / Reject. Revise tối đa 3 chu kỳ và luôn chạy lại Eng sau phase bị đổi."
+    },
+    {
+      "title": "Completion",
+      "instructionSummary": "Khi duyệt: ghi review-log cho từng phase (và bản ghi autoplan-voices theo phase), bảng phủ sóng, gợi ý /ship."
+    }
+  ],
+  "approvalGates": [
+    "Chỉ MỘT cổng cuối (Phase 4): Approve as-is / Approve with overrides / Resolve user challenges / Interrogate / Revise / Reject.",
+    "User Challenge (cả hai mô hình đồng ý đổi hướng người dùng nêu: gộp, tách, thêm, bỏ) KHÔNG BAO GIỜ tự quyết; hướng gốc giữ nguyên trừ khi người dùng đồng ý.",
+    "Taste decisions (phương án sát nhau, scope biên 3-5 file, bất đồng với reviewer ngoài) tự quyết theo khuyến nghị nhưng phải trình ở cổng cuối.",
+    "Tiền đề rõ ràng sai: xếp hàng thành User Challenge, không dừng giữa chừng.",
+    "Mỗi phase phải gửi thông báo hoàn tất trước khi sang phase kế (không chờ 'continue')."
+  ],
+  "outputs": [
+    "ACTIVE_PLAN: 'Implementation plan' đã sửa + 'Review record' (autoplan-accepted blocks, Decision Audit Trail).",
+    "Restore point: .gstack/tmp/autoplan/<branch>-autoplan-restore-<datetime>.md.",
+    "Task tổng hợp từ tasks-*-review-*.jsonl hiển thị trong cổng cuối.",
+    "Test plan artifact (phase Eng), TODOS.md (mục hoãn), review-log từng phase + autoplan-voices."
+  ],
+  "dependsOn": [
+    "plan-ceo-review, plan-design-review, plan-devex-review, plan-eng-review (đọc từ đĩa và chạy toàn bộ)",
+    "office-hours (benefits-from)",
+    "ship (nhận review-log, dashboard)",
+    "snapshot tool bun (init/scope/create/amend-input/prepare-close/methodology)",
+    "Agent tool (subagent native độc lập)",
+    "Codex CLI (tuỳ chọn)",
+    "jq",
+    "gstack bin: gstack-slug, gstack-design-doc-find, gstack-review-log"
+  ],
+  "modes": [
+    {
+      "name": "Phase set",
+      "behavior": "CEO -> Design (nếu UI) -> DX (nếu bề mặt dev) -> Eng luôn cuối."
+    },
+    {
+      "name": "Forced modes",
+      "behavior": "CEO = SELECTIVE EXPANSION; DX = POLISH; Eng không giảm scope."
+    },
+    {
+      "name": "Degradation",
+      "behavior": "Thiếu Codex: single-model (subagent-only); cả hai lỗi: single-reviewer mode."
+    }
+  ],
+  "systemPromptCore": "You orchestrate a sequential plan-review pipeline: CEO (strategy and scope), then Design if the plan has UI scope, then DX if it has developer-facing scope, then Engineering always last so it reviews all prior amendments. Before anything else, back up the source plan byte-for-byte as a restore point. For each phase, load the full review methodology and run every section at full depth; auto-decide intermediate questions instead of asking, using six principles: choose completeness, fix everything in the blast radius if cheap, be pragmatic, avoid duplicating existing functionality, prefer explicit over clever, bias toward action. Take the recommended option by default. Classify decisions: mechanical (decide silently), taste (decide but surface at the end), user challenge (both reviewers want to change the user's stated direction: never auto-decide). Each phase runs a native reviewer and, if available, an independent outside reviewer on a fresh snapshot of the plan only, then produces a consensus table; a missing voice is N/A, never confirmed. Log every automatic decision in an audit trail, record accepted obligations, close each phase by re-reading the full packet and announcing completion before starting the next. Present one final approval gate summarizing decisions, challenges, taste choices, scores, cross-phase themes, deferred items and aggregated tasks. Never skip or compress required sections."
+}

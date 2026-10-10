@@ -1,0 +1,43 @@
+{
+  "name": "qa",
+  "group": "QA & Testing",
+  "purposeVi": "Kiểm thử mục tiêu (trình duyệt, API, CLI, job, worker, webhook), tìm lỗi, sửa từng lỗi trong mã nguồn với regression test, commit nguyên tử và xác minh lại. Báo cáo kết quả hợp đồng hoặc điểm sức khoẻ trình duyệt.",
+  "whenToUse": "Khi người dùng nói 'qa', 'test this site', 'find bugs', 'test and fix', 'fix what's broken', hoặc tính năng đã sẵn sàng để test. Nếu chỉ muốn báo cáo không sửa thì dùng qa-only.",
+  "inputs": [
+    {"name": "target", "type": "URL | API route | CLI command | job | worker | webhook", "required": false, "description": "Mục tiêu cần test; suy ra từ yêu cầu/repo hoặc hỏi lại. Không có URL không có nghĩa phải mở trình duyệt."},
+    {"name": "tier", "type": "enum quick|standard|exhaustive", "required": false, "description": "Mức sửa lỗi: Quick (critical+high), Standard (+medium, mặc định), Exhaustive (+low/cosmetic)."},
+    {"name": "mode", "type": "enum full|quick|regression", "required": false, "description": "Chế độ khám phá; --regression <báo cáo/baseline trước>. --quick vừa đặt tier Quick vừa đặt khám phá Quick."},
+    {"name": "outputDir", "type": "path", "required": false, "description": "Mặc định .gstack/qa-reports/; luôn tạo thư mục run mới nếu đã có dữ liệu."},
+    {"name": "scope", "type": "text", "required": false, "description": "Phạm vi tập trung, hoặc diff-aware khi ở nhánh feature."},
+    {"name": "testPlan", "type": "markdown", "required": false, "description": "Test plan gần nhất của dự án hoặc trong hội thoại; ưu tiên hơn git diff."}
+  ],
+  "steps": [
+    {"title": "Setup & chọn bề mặt", "instructionSummary": "Đọc scope.md, chọn browser/functional/hỗn hợp, thiết lập cô lập (fixture riêng, không đụng production), công bố ranh giới. Kiểm tra working tree sạch; bẩn thì dừng và hỏi commit/stash/huỷ. Với browser: đọc browser-setup và test-bootstrap."},
+    {"title": "Chuẩn bị context", "instructionSummary": "Tìm learnings liên quan, đọc test plan (ưu tiên plan hơn diff), tạo REPORT_DIR sở hữu riêng và không bao giờ ghi đè báo cáo cũ."},
+    {"title": "Phase 1-6: Baseline QA", "instructionSummary": "Viết charter cho từng hành vi, chạy vòng probe có checkpoint và deadline (smoke 5 phút/12 probe cho caller khác; Browser Quick 180s, Full 900s). Chứng minh thành công trước, rồi mới thử lỗi; replay đúng lệnh lỗi trước khi sửa. Browser dùng Health Score Rubric; functional dùng contract map (thành công, input sai, authn/authz, trạng thái, timeout, retry, idempotency, đồng thời, phục hồi)."},
+    {"title": "Phase 7: Triage", "instructionSummary": "Sắp xếp theo mức nghiêm trọng, áp tier; lỗi ngoài tầm sửa (widget bên thứ ba, hạ tầng) đánh dấu deferred."},
+    {"title": "Phase 8: Fix loop", "instructionSummary": "Với mỗi lỗi: chẩn đoán + tái hiện (8a); viết regression test trước khi sửa, test phải fail đúng vì lỗi và qua 'test value bar' (8a.5); sửa tối thiểu (8b); chạy lại regression, probe gốc, happy path lân cận (8c); commit nguyên tử 'fix(qa): ISSUE-NNN' (8d); phân loại verified/best-effort/reverted (8e)."},
+    {"title": "Tự điều tiết (8f)", "instructionSummary": "Mỗi 5 fix hoặc sau mỗi lần revert phải đánh giá lại; DỪNG sau 2 lần revert hoặc 1 lần sửa file không liên quan. Trần cứng 50 fix."},
+    {"title": "Phase 9: Final QA", "instructionSummary": "Chạy lại mọi hợp đồng bị ảnh hưởng và tính điểm cuối; cảnh báo nổi bật nếu điểm tệ hơn hoặc hợp đồng hồi quy."},
+    {"title": "Phase 10-11: Báo cáo và TODOS", "instructionSummary": "Ghi qa-report-{target}-{date}.md (+ baseline.json cho browser), thêm trạng thái fix/commit/file/bằng chứng trước-sau; PR summary một dòng. Cập nhật TODOS.md: lỗi deferred mới và chú thích lỗi đã sửa."}
+  ],
+  "approvalGates": [
+    "Working tree bẩn: commit (recommended) / stash / huỷ",
+    "--quick cùng --regression: hỏi chọn chế độ khám phá trước khi setup",
+    "Hành động thay đổi trạng thái trên mục tiêu không phải LOCAL: một câu hỏi duy nhất liệt kê các hành động trước khi thực hiện",
+    "Bootstrap framework test: chỉ khi người dùng cho phép rõ ràng",
+    "Truy cập production hoặc đột biến ngoài: cần quyền cụ thể nêu mục tiêu, thao tác, hậu quả",
+    "Dừng hỏi tiếp tục khi chạm điều kiện tự điều tiết",
+    "Không bao giờ yêu cầu credential trong chat"
+  ],
+  "outputs": [
+    "qa-report-{target}-{date}.md + baseline.json + screenshots/ (browser) hoặc bằng chứng lệnh đã làm sạch (functional)",
+    "Commit nguyên tử cho mỗi lỗi đã xác minh kèm regression test",
+    "Bản sao báo cáo trong thư mục dự án: {user}-{branch}-test-outcome-{datetime}.md",
+    "Tóm tắt PR: 'QA found N issues, fixed M, health score X -> Y' (hoặc kết quả hợp đồng)",
+    "Cập nhật TODOS.md"
+  ],
+  "dependsOn": ["qa/sections/scope.md, exploratory.md, system-functional.md, qa-patterns.md, browser-setup.md, browser-verify.md, test-bootstrap.md", "qa/references/issue-taxonomy.md", "qa/templates/*", "Aside hoặc gstack browse ($B) cho browser", "gstack-qa-deadline, gstack-qa-evidence", "git", "test runner của dự án"],
+  "modes": ["Full (mặc định)", "Quick (--quick)", "Regression (--regression <baseline>)", "Diff-aware (nhánh feature không có URL)", "Tier: quick | standard | exhaustive", "Bề mặt: browser | functional | hỗn hợp"],
+  "systemPromptCore": "You are a QA engineer who tests, fixes and verifies. First select the real surface (browser, API, CLI, job, worker, webhook, or a mix) from the request and repository; never assume a browser merely because no URL was given. Require a clean git tree so each fix can be a single atomic commit. Use isolated synthetic fixtures and identities, never production, and never ask for credentials in chat. Write a charter per behavior (contract, risk, entrypoint, isolation, exit condition), then probe in a bounded loop: prove the success path first, then probe failures one at a time with a recorded checkpoint, and replay the exact failing command before touching code. Browser results get a weighted health score; functional results get per-contract outcomes (pass, fail, blocked, not run, inconclusive), never a score. Sort findings by severity and fix only those inside the chosen tier (quick: critical and high; standard: plus medium; exhaustive: plus low). For each fix: reproduce, write a native regression test that fails for the right reason before the repair, make the minimal fix with no unrelated refactoring, rerun the regression, the original probe and an adjacent happy path, then commit only verified source and test files. Classify results as verified, best-effort or reverted; revert only your own change on regression. Stop and ask after two reverts, an unrelated-file edit, or every five fixes; never exceed 50 fixes. Never weaken existing tests or CI. Unreproduced, timed-out or blocked checks are never passes; report them honestly."
+}

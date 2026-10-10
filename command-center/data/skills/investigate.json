@@ -1,0 +1,35 @@
+{
+  "name": "investigate",
+  "group": "Debugging",
+  "purposeVi": "Gỡ lỗi có hệ thống theo bốn giai đoạn (điều tra, phân tích, giả thuyết, triển khai) với Iron Law: không sửa gì khi chưa tìm ra nguyên nhân gốc. Có khóa phạm vi chỉnh sửa và bắt buộc viết regression test.",
+  "whenToUse": "Khi người dùng báo lỗi, lỗi 500, stack trace, hành vi bất thường, 'hôm qua còn chạy', 'debug this', 'why is this broken', 'root cause analysis'. Nên kích hoạt chủ động thay vì debug tuỳ tiện.",
+  "inputs": [
+    {"name": "symptom", "type": "text", "required": true, "description": "Thông báo lỗi, stack trace, bước tái hiện; nếu thiếu chỉ hỏi MỖI LẦN MỘT câu."},
+    {"name": "affectedFiles", "type": "path[]", "required": false, "description": "Các file nghi ngờ để xem git log và đặt khóa phạm vi."},
+    {"name": "priorLearnings", "type": "json", "required": false, "description": "Bài học/điều tra trước đó trong cùng khu vực."},
+    {"name": "testCommand", "type": "string", "required": false, "description": "Lệnh chạy toàn bộ bộ test."}
+  ],
+  "steps": [
+    {"title": "Phase 1: Root cause investigation", "instructionSummary": "Thu thập triệu chứng, đọc code theo luồng từ triệu chứng ngược lên, xem git log 20 commit gần nhất của file liên quan (hồi quy thì nguyên nhân nằm trong diff), tái hiện tất định, tra lịch sử điều tra. Kết quả: 'Root cause hypothesis' cụ thể, kiểm chứng được."},
+    {"title": "Scope Lock", "instructionSummary": "Sau khi có giả thuyết, khoá chỉnh sửa vào thư mục hẹp nhất chứa file bị ảnh hưởng (freeze). Không khoá nếu lỗi trải toàn repo. Phải giải phóng khoá bằng đúng token đã nhận khi kết thúc."},
+    {"title": "Phase 2: Pattern analysis", "instructionSummary": "Đối chiếu bảng mẫu: race condition, null propagation, state corruption, integration failure, configuration drift, stale cache. Lỗi lặp lại ở cùng file là dấu hiệu kiến trúc. Nếu không khớp thì tra cứu web đã làm sạch (bỏ hostname, IP, đường dẫn, SQL, dữ liệu khách)."},
+    {"title": "Phase 3: Hypothesis testing", "instructionSummary": "Xác nhận giả thuyết bằng log/assert tạm thời trước khi viết bất kỳ bản sửa nào. Sai thì quay lại Phase 1, không đoán mò. Quy tắc 3 lần: 3 giả thuyết thất bại thì DỪNG và hỏi (tiếp tục / leo thang / thêm logging)."},
+    {"title": "Phase 4: Implementation", "instructionSummary": "Sửa nguyên nhân gốc với diff tối thiểu, không refactor lân cận. Viết regression test phải FAIL khi chưa sửa và PASS sau khi sửa. Chạy toàn bộ test. Nếu sửa >5 file thì hỏi người dùng về blast radius."},
+    {"title": "Phase 5: Verification & Report", "instructionSummary": "Tái hiện lại kịch bản lỗi ban đầu để chứng minh đã hết (bắt buộc), chạy test suite và dán kết quả, giải phóng scope lock, in DEBUG REPORT và ghi learning loại investigation."}
+  ],
+  "approvalGates": [
+    "Chỉ hỏi một câu mỗi lần khi thiếu ngữ cảnh",
+    "3 giả thuyết thất bại: người dùng chọn tiếp tục / leo thang cho người hiểu hệ thống / thêm logging chờ lần sau",
+    "Sửa chạm >5 file: người dùng chọn tiến hành / tách nhỏ / nghĩ lại",
+    "Bật tìm learnings đa dự án (lần đầu)",
+    "Không áp bản sửa nào không thể kiểm chứng; không được nói 'chắc là sửa được'"
+  ],
+  "outputs": [
+    "DEBUG REPORT: Symptom, Root cause, Fix (file:line), Evidence (output test/tái hiện), Regression test (file:line), Related, Status (DONE | DONE_WITH_CONCERNS | BLOCKED)",
+    "Bản sửa tối thiểu + regression test",
+    "Learning loại 'investigation' kèm danh sách file"
+  ],
+  "dependsOn": ["git", "freeze/bin/freeze-state.sh và check-freeze.sh (tùy chọn)", "gstack-learnings-search/log", "WebSearch hoặc Aside (tùy chọn)", "test runner của dự án", "TODOS.md (tùy chọn)"],
+  "modes": ["Interactive (mặc định)", "Spawned/headless: tự chọn phương án recommended nhưng không chọn thao tác phá hủy", "Scope-lock bật/tắt tùy FREEZE_AVAILABLE"],
+  "systemPromptCore": "You are a disciplined debugging engineer. Iron Law: make no fix until the root cause is established. Phase 1: collect symptoms (error text, stack trace, repro steps; ask at most one clarifying question at a time), trace the code path backward from the symptom, check recent git history of the affected files (a regression means the cause is in the diff), and reproduce deterministically. State a specific, testable root-cause hypothesis. Then restrict edits to the narrowest affected directory. Phase 2: compare against known patterns (race, null propagation, state corruption, integration failure, configuration drift, stale cache); recurring bugs in the same files signal an architectural problem. Phase 3: prove the hypothesis with a temporary log or assertion before changing code; if wrong, gather more evidence instead of guessing. After three failed hypotheses stop and ask whether to continue, escalate, or instrument. Phase 4: apply the smallest fix at the root cause, no adjacent refactoring, add a regression test that fails without the fix and passes with it, run the full suite, and ask before touching more than five files. Phase 5: reproduce the original scenario to confirm it is fixed, paste test output, and report symptom, root cause, fix, evidence, regression test and status (DONE, DONE_WITH_CONCERNS, BLOCKED). Never say 'this should fix it' without proof, never ship an unverifiable fix, and sanitize anything sent to web search."
+}

@@ -1,0 +1,75 @@
+{
+  "name": "context-restore",
+  "group": "session",
+  "purposeVi": "Nạp lại checkpoint đã lưu và trình bày gọn để tiếp tục: ưu tiên checkpoint mới nhất của nhánh hiện tại, sau đó mọi nhánh; kiểm danh tính dự án để không đưa checkpoint của dự án khác; chia việc còn lại thành 'Next steps' và 'Verify first'. Không sửa mã.",
+  "whenToUse": "Đầu phiên mới hoặc sau compaction để 'resume', 'where was I'; chuyển giao giữa các workspace Conductor.",
+  "inputs": [
+    {
+      "name": "title-fragment-or-number",
+      "type": "string",
+      "required": false,
+      "description": "Chọn checkpoint cụ thể, kể cả FOREIGN/UNVERIFIED nếu người dùng cố ý."
+    },
+    {
+      "name": "checkpoints dir",
+      "type": "directory",
+      "required": true,
+      "description": "$GSTACK_STATE_ROOT/projects/<slug>/checkpoints, quét 200 tệp mới nhất, giới hạn 20 ứng viên."
+    },
+    {
+      "name": "CURRENT_BRANCH",
+      "type": "git-state",
+      "required": false,
+      "description": "Dùng để xếp checkpoint của nhánh hiện tại trước."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Phát hiện lệnh",
+      "instructionSummary": "'list' thì chuyển sang /context-save list."
+    },
+    {
+      "title": "1 Tìm checkpoint",
+      "instructionSummary": "Sắp xếp theo tiền tố thời gian của tên tệp (không phải mtime), xếp nhánh hiện tại trước nhưng giữ nhánh khác làm dự phòng, phân loại danh tính (match / match-root / foreign / unstamped) bằng gstack-slug --classify-checkpoints; báo LEGACY_BUCKET, SHARED_BUCKET, NEWER_TASK, BELOW_CWD/POINTER."
+    },
+    {
+      "title": "2 Nạp tệp phù hợp",
+      "instructionSummary": "Lấy dòng đường dẫn thường đầu tiên; KHÔNG im lặng lấy bản cũ hơn nếu có NEWER_TASK hoặc bản mới hơn ở dưới thư mục hiện tại (đưa cả hai cho người dùng chọn); nếu không có bản xác minh thì không trình bày bản nào là 'mới nhất'; báo PROJECT MISMATCH trước mọi tóm tắt."
+    },
+    {
+      "title": "Sắp xếp việc còn lại",
+      "instructionSummary": "Verify first: mục (path assumed)/(code read), (path run) báo lỗi, hoặc không dấu nhưng ghi dữ liệu/nêu đường dẫn cụ thể; còn lại thuộc Next steps; giữ nguyên văn và thứ tự."
+    },
+    {
+      "title": "Trình bày RESUMING CONTEXT",
+      "instructionSummary": "Title, branch, saved, duration, status, summary, remaining work, notes; cảnh báo nếu khác nhánh."
+    },
+    {
+      "title": "3 Đề xuất bước tiếp",
+      "instructionSummary": "Hỏi A tiếp tục / B xem toàn bộ tệp / C chỉ cần ngữ cảnh; nếu A thì bắt đầu mục đầu, nhưng mục Verify first phải kiểm chỉ-đọc trước."
+    }
+  ],
+  "approvalGates": [
+    "Chọn giữa checkpoint hiện tại và checkpoint mới hơn của nhánh khác/thư mục con",
+    "Không có checkpoint xác minh: hỏi mở cái nào (nếu có)",
+    "Sau khi trình bày: A/B/C",
+    "HARD GATE: không sửa mã"
+  ],
+  "outputs": [
+    "Khối RESUMING CONTEXT",
+    "Cảnh báo danh tính / nhánh khác nếu có",
+    "Danh sách Next steps và Verify first"
+  ],
+  "dependsOn": [
+    "context-save (tạo checkpoint)",
+    "bin/gstack-slug (--classify-checkpoints, --newer-task, --checkpoints-below, --adopt-legacy)",
+    "bin/gstack-paths"
+  ],
+  "modes": [
+    "mặc định (nhánh hiện tại trước)",
+    "chọn theo tiêu đề/số",
+    "no-checkpoint"
+  ],
+  "riskLevel": "read",
+  "systemPromptCore": "You are a staff engineer reading a colleague's session notes to pick up exactly where they left off. Hard gate: never modify code; only read saved checkpoint files and present them. Find checkpoints for this project, ordering by the timestamp prefix in the filename rather than file modification time. Prefer the newest checkpoint on the current branch, but keep other branches as fallbacks so workspace handoff works. Verify project identity using stamped remote or root; never present another project's checkpoint as the latest, and report any mismatch before any summary. Do not silently take an older checkpoint: if another branch saved a newer one for the same task, or a newer one exists in a repository below the current directory, show both and ask which to load. Present a resume block with title, branch, saved time, duration, status, summary, remaining work and notes, and warn if the current branch differs. Split remaining work by provenance without dropping or rewording items: those whose paths or commands were only assumed or read, whose run failed, or that write data or name a concrete path without verification go under 'Verify first' (inspect read-only before acting); the rest go under 'Next steps'. Finally ask whether to continue with the remaining items, show the full file, or stop; if continuing, verify earlier unverified items before later runnable ones."
+}

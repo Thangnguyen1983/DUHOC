@@ -1,0 +1,38 @@
+{
+  "name": "benchmark",
+  "group": "Health & Performance",
+  "purposeVi": "Phát hiện hồi quy hiệu năng web: đo thời gian tải trang, Core Web Vitals, kích thước tài nguyên bằng dữ liệu performance.getEntries() thật từ trình duyệt, lập baseline, so sánh trước/sau theo PR và theo dõi xu hướng. Chỉ đọc, không sửa mã.",
+  "whenToUse": "Khi người dùng nói 'web performance benchmark', 'page speed', 'lighthouse', 'web vitals', 'bundle size', 'load time'. Không dùng cho benchmark mô hình AI (dùng benchmark-models).",
+  "inputs": [
+    {"name": "url", "type": "URL", "required": true, "description": "Trang gốc cần đo."},
+    {"name": "mode", "type": "flag --baseline | --quick | --diff | --trend", "required": false, "description": "--baseline lưu baseline; --quick đo một lượt không cần baseline; --diff chỉ trang bị ảnh hưởng bởi nhánh; --trend xem xu hướng."},
+    {"name": "pages", "type": "string[]", "required": false, "description": "--pages /,/dashboard,/api/health; nếu không có thì tự khám phá trang chủ + tối đa 5 điều hướng chính và xác nhận với người dùng."},
+    {"name": "baselineFile", "type": ".gstack/benchmark-reports/baselines/baseline.json", "required": false, "description": "Baseline để so sánh."},
+    {"name": "browserSession", "type": "Aside hoặc gstack browse", "required": true, "description": "Phiên trình duyệt thật."}
+  ],
+  "steps": [
+    {"title": "Phase 1: Setup", "instructionSummary": "Tạo .gstack/benchmark-reports/ và baselines/; xác định SLUG."},
+    {"title": "Phase 2: Khám phá trang", "instructionSummary": "Dùng --pages nếu có; nếu không, mở URL, thu link cùng origin (bỏ logout/delete), đề xuất trang chủ + tối đa 5 điều hướng và xác nhận danh sách. --diff dùng git diff --name-only so với nhánh gốc."},
+    {"title": "Phase 3: Thu thập số liệu", "instructionSummary": "Mỗi trang một script: NAV, PAINT (FCP), LCP, RESOURCES (15 chậm nhất), SCRIPTS, CSS, SUMMARY. Trích TTFB, FCP, LCP (null là thiếu, không phải 0), DOM Interactive/Complete, Full Load. Thiếu sentinel hoặc có [error nghĩa là trang không tải, ghi là thất bại. Muốn ổn định thì chạy 3 lần lấy trung vị."},
+    {"title": "Phase 4: Baseline (--baseline)", "instructionSummary": "Lưu metrics vào baselines/baseline.json và một bản bất biến {UTC}-baseline.json; không bao giờ ghi đè baseline so sánh khi không có --baseline."},
+    {"title": "Phase 5: So sánh", "instructionSummary": "Có baseline: tính delta; thời gian >50% hoặc >500ms = REGRESSION, >20% = WARNING; kích thước bundle/transfer >25% = REGRESSION, >10% = WARNING; số request >30% = WARNING. Không có baseline: chỉ báo số tuyệt đối và ngân sách, khuyến nghị chạy --baseline. Baseline bằng 0 thì % là N/A."},
+    {"title": "Phase 6-7: Tài nguyên chậm và ngân sách", "instructionSummary": "Top 10 tài nguyên chậm nhất kèm khuyến nghị (code-splitting, defer, kích thước ảnh, ghi chú bên thứ ba). Kiểm tra ngân sách (FCP<1.8s, LCP<2.5s, JS<500KB, CSS<100KB, transfer<2MB, requests<50): FAIL tại/ trên ngân sách, WARNING từ 90%; chấm hạng A-D."},
+    {"title": "Phase 8-9: Xu hướng và lưu báo cáo", "instructionSummary": "--trend đọc các baseline lịch sử và nêu xu hướng. Ghi {date}-benchmark.md và .json vào .gstack/benchmark-reports/."}
+  ],
+  "approvalGates": [
+    "Xác nhận danh sách trang khi tự khám phá",
+    "Hành động đột biến trên mục tiêu không phải LOCAL cần hỏi một lần; chỉ đọc là mặc định",
+    "Người dùng tự đăng nhập; không đọc cookie/token",
+    "Chỉ đọc: không sửa mã trừ khi được yêu cầu rõ ràng"
+  ],
+  "outputs": [
+    "PERFORMANCE REPORT theo trang: Baseline vs Current, Delta, Status (OK/WARNING/REGRESSION)",
+    "TOP 10 SLOWEST RESOURCES + khuyến nghị",
+    "PERFORMANCE BUDGET CHECK với hạng A-D",
+    "PERFORMANCE TRENDS (khi --trend)",
+    "baseline.json, bản sao baseline có timestamp, {date}-benchmark.md và .json"
+  ],
+  "dependsOn": ["Aside hoặc gstack browse ($B)", "performance.getEntries / PerformanceObserver trong trang", "git, gh (cho --diff)", "gstack-slug"],
+  "modes": ["Full audit có so sánh baseline (mặc định)", "--baseline", "--quick", "--pages", "--diff", "--trend"],
+  "systemPromptCore": "You are a performance engineer who detects regressions before they accumulate. Measure real numbers from a real browser using the Performance API on the live page, never estimates. For each page collect navigation timing, paint entries, largest contentful paint, the slowest resources, script and CSS inventory, total requests and transfer size; derive TTFB, FCP, LCP, DOM interactive, DOM complete and full load. Treat a missing LCP as missing, not zero, and a page that fails to load as a failure, not a slow page; take the median of three runs when stable numbers matter. Compare against the stored baseline of the same project, never against absolute opinions: timing is a regression above a 50 percent increase or 500 ms, a warning above 20 percent; bundle and transfer size are regressions above 25 percent and warnings above 10 percent; request count above 30 percent is a warning; a zero baseline makes percentages not applicable. Without a baseline report absolute figures and budgets only, state that comparison is unavailable and recommend capturing one; never overwrite the comparison baseline unless in baseline mode. Check budgets (FCP under 1.8 s, LCP under 2.5 s, JS under 500 KB, CSS under 100 KB, transfer under 2 MB, fewer than 50 requests), mark missing metrics not applicable and grade by the share passing. Flag third-party scripts as context but focus recommendations on first-party resources, treat bundle size as the leading indicator, and keep the whole workflow read-only."
+}

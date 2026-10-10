@@ -1,0 +1,110 @@
+{
+  "name": "retro",
+  "group": "analytics",
+  "purposeVi": "Báo cáo hồi cứu kỹ thuật theo tuần: phân tích commit, nhịp làm việc, chất lượng mã của người dùng và từng cộng sự bằng bằng chứng cụ thể, so với lần trước, lưu snapshot JSON. Có chế độ compare và global (đa dự án, đa công cụ AI).",
+  "whenToUse": "Cuối tuần/sprint: 'weekly retro', 'what did we ship', 'engineering retrospective'.",
+  "inputs": [
+    {
+      "name": "window",
+      "type": "duration",
+      "required": false,
+      "description": "Cửa sổ thời gian như 24h, 14d, 30d, 2w; mặc định 7d; neo nửa đêm địa phương."
+    },
+    {
+      "name": "mode",
+      "type": "enum",
+      "required": false,
+      "description": "(trống)=repo, compare [window], global [window]."
+    },
+    {
+      "name": "today",
+      "type": "date",
+      "required": true,
+      "description": "Lấy từ currentDate của phiên, KHÔNG dùng đồng hồ hệ thống."
+    },
+    {
+      "name": "retro-context.md / greptile-history.md / TODOS.md",
+      "type": "file",
+      "required": false,
+      "description": "Đầu vào tùy chọn nếu script đánh dấu present."
+    },
+    {
+      "name": "prior snapshots",
+      "type": "file",
+      "required": false,
+      "description": ".context/retros/*.json (repo) hoặc $GSTACK_STATE_ROOT/retros/global-*.json"
+    }
+  ],
+  "steps": [
+    {
+      "title": "Kiểm tham số + Prior Learnings",
+      "instructionSummary": "Sai định dạng thì in usage và dừng; tìm learnings cũ (hỏi bật cross-project lần đầu)."
+    },
+    {
+      "title": "0.5 Fetch tươi",
+      "instructionSummary": "git fetch origin <default>, lưu lại thành công hay không."
+    },
+    {
+      "title": "1 Thu thập chỉ số",
+      "instructionSummary": "Chạy gstack-retro-metrics một lệnh; guard: base cũ/neo ngày sai thì CHẶN khi fetch thành công; không bịa số khi script thiếu."
+    },
+    {
+      "title": "2 Tính chỉ số",
+      "instructionSummary": "Bảng tính năng đã ship (CHANGELOG + PR merged), commit, SLOC logic, tỷ lệ test, phiên, bảng xếp hạng tác giả."
+    },
+    {
+      "title": "3-8 Phân tích",
+      "instructionSummary": "Phân bố giờ, phiên làm việc (khoảng cách 45 phút), loại commit (cờ nếu fix >50%), hotspot, kích thước PR, focus score, ship of the week."
+    },
+    {
+      "title": "9 Phân tích từng thành viên",
+      "instructionSummary": "Khen cụ thể kèm commit, một cơ hội phát triển gắn dữ liệu; repo một người thì bỏ qua."
+    },
+    {
+      "title": "10-11.5 Xu hướng, streak, nợ lối tắt",
+      "instructionSummary": "Xu hướng tuần nếu >=14d, streak neo ở commit mới nhất, gom marker gstack-shortcut."
+    },
+    {
+      "title": "12 Nạp lịch sử & so sánh",
+      "instructionSummary": "So với retro cùng cửa sổ, chấm 'recommendation follow-through' cho khuyến nghị trước."
+    },
+    {
+      "title": "13 Lưu snapshot",
+      "instructionSummary": "Ghi .context/retros/{today}-{n}.json kèm recommendations luôn có."
+    },
+    {
+      "title": "14 Viết tường thuật",
+      "instructionSummary": "Đọc section report-format rồi viết báo cáo; ghi learnings."
+    },
+    {
+      "title": "Global/Compare",
+      "instructionSummary": "Global: chạy gstack-global-discover, git log từng repo, streak toàn cục, chuyển ngữ cảnh, thẻ cá nhân + phân tích đội, lưu global snapshot. Compare: chạy hai cửa sổ liền kề, bảng Current vs Prior."
+    }
+  ],
+  "approvalGates": [
+    "Hỏi bật cross-project learnings lần đầu (A/B)",
+    "Guard cửa sổ cũ: CHẶN và yêu cầu người dùng xác nhận ngày hôm nay/fetch lại",
+    "Không tìm được ngày hôm nay đáng tin thì hỏi qua AskUserQuestion thay vì đoán"
+  ],
+  "outputs": [
+    "Báo cáo tường thuật trực tiếp trong hội thoại (bảng, histogram, bảng xếp hạng)",
+    ".context/retros/{date}-{n}.json (repo) hoặc $GSTACK_STATE_ROOT/retros/global-{date}-{n}.json",
+    "Câu tweetable, '3 Things to Improve', recommendations",
+    "Learnings ghi qua gstack-learnings-log"
+  ],
+  "dependsOn": [
+    "bin/gstack-retro-metrics",
+    "bin/gstack-global-discover (chế độ global)",
+    "gh (đếm PR đã merge)",
+    "git",
+    "gstack-learnings-search/log",
+    "sections/report-format.md"
+  ],
+  "modes": [
+    "repo (mặc định)",
+    "compare",
+    "global (không cần repo git)"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "You write an evidence-backed engineering retrospective for the current user and every contributor. Parse the window (default seven days) and anchor it at local midnight using the session's date, never the system clock; reject malformed arguments with usage text. Refresh the base branch, then run the metrics helper once and trust only its output; if it is unavailable say so and never invent numbers. Guard against stale refs or a wrong today by blocking when the newest commit predates the window after a successful fetch. Report shipped features first (from the changelog and merged PRs), then commits, logical lines of code, test ratio, sessions with a 45-minute gap rule, commit-type mix, hotspots, PR size buckets, focus score, ship of the week, per-person praise with specific commits and one growth opportunity tied to data, week-over-week trends, streaks, and a ledger of deliberate shortcut markers. Compare against the previous snapshot of the same window and score earlier recommendations as addressed, partial or open. Save a JSON snapshot including recommendations. Tone: candid, specific, never generic praise, never comparing teammates negatively. Compare mode computes the prior adjacent window; global mode aggregates across repositories and AI tools, leads with a personal card, and saves a global snapshot."
+}

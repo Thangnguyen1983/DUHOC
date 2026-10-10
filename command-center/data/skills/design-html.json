@@ -1,0 +1,137 @@
+{
+  "name": "design-html",
+  "group": "design",
+  "purposeVi": "Hoàn thiện thiết kế thành HTML/CSS chất lượng production dùng Pretext (thư viện bố cục văn bản): văn bản thực sự reflow, chiều cao được tính, thẻ tự co giãn, bong bóng chat ôm sát, bố cục editorial chảy quanh vật cản. Làm việc từ mockup đã duyệt (design-shotgun), CEO plan, review thiết kế, hoặc mô tả từ đầu.",
+  "whenToUse": "Khi người dùng nói 'finalize this design', 'turn this into HTML', 'build me a page', 'implement this design', 'build the design', 'code the mockup', 'make it real', hoặc sau bất kỳ skill lập kế hoạch/thiết kế nào. Mỗi lần gọi chỉ một trang.",
+  "inputs": [
+    {
+      "name": "approvedMockup",
+      "type": "approved.json + ảnh PNG",
+      "required": false,
+      "description": "Từ /design-shotgun; được giải qua gstack-design-approved. Có thì khớp từng pixel."
+    },
+    {
+      "name": "ceoPlan",
+      "type": "~/.gstack/projects/<slug>/ceo-plans/*.md",
+      "required": false,
+      "description": "Bối cảnh chiến lược; dùng cho chế độ plan-driven."
+    },
+    {
+      "name": "DESIGN.md",
+      "type": "file",
+      "required": false,
+      "description": "Token hệ thống (font, màu, spacing) có ưu tiên cao hơn giá trị trích từ ảnh."
+    },
+    {
+      "name": "screenName",
+      "type": "chuỗi",
+      "required": true,
+      "description": "Từ approved.json, người dùng, hoặc suy ra; dùng đặt tên thư mục đầu ra."
+    },
+    {
+      "name": "frameworkChoice",
+      "type": "vanilla | React | Svelte | Vue (+ TS/JS)",
+      "required": false,
+      "description": "Hỏi nếu phát hiện framework trong package.json; mặc định vanilla HTML."
+    },
+    {
+      "name": "priorFinalized",
+      "type": "finalized.html",
+      "required": false,
+      "description": "Nếu có: evolve hay start fresh."
+    },
+    {
+      "name": "designBinary / detector",
+      "type": "$D, impeccable engine (tuỳ chọn)",
+      "required": false,
+      "description": "$D prompt trích spec; detector quét slop một lần."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Setup",
+      "instructionSummary": "Chạy DESIGN SETUP và probe detector (nếu in DESIGN_DETECTOR_INSTALL_OFFER thì đọc section offer và hỏi cài một lần, chỉ khi phiên tương tác); đọc doctrine UX."
+    },
+    {
+      "title": "Step 0: Phát hiện đầu vào",
+      "instructionSummary": "Quét CEO plan, approved.json, variant PNG, finalized.html, DESIGN.md và định tuyến: Case A (có approved.json: giải ảnh duyệt, đọc DESIGN.md, hỏi evolve/fresh nếu có finalized), Case B (có plan/variant nhưng chưa duyệt: hỏi chạy /design-shotgun, bỏ mockup và thiết kế từ plan, hay cho PNG), Case C (không có gì: hỏi chạy plan-ceo-review / plan-design-review / design-shotgun hay mô tả trực tiếp). In tóm tắt: mode (approved-mockup|plan-driven|freeform|evolve), tham chiếu, token, tên màn hình."
+    },
+    {
+      "title": "Step 1: Phân tích thiết kế",
+      "instructionSummary": "Nếu có $D: `$D prompt --image ... --output json` lấy màu/typography/layout/component; không thì đọc PNG và tự mô tả; plan-driven/freeform thì suy từ plan hoặc hỏi người dùng (mục đích, cảm giác, cấu trúc nội dung, tham khảo). DESIGN.md ghi đè giá trị trích. Xuất 'Implementation spec' (màu hex, font, spacing, component, loại layout)."
+    },
+    {
+      "title": "Step 2: Định tuyến API Pretext",
+      "instructionSummary": "Phân loại: landing/marketing và card/grid -> prepare()+layout(); chat -> prepareWithSegments()+walkLineRanges(); editorial/blog -> prepareWithSegments()+layoutNextLine(); editorial phức tạp -> full engine + layoutWithLines(). Nêu tầng đã chọn và lý do."
+    },
+    {
+      "title": "Step 2.5: Phát hiện framework",
+      "instructionSummary": "Nếu có React/Svelte/Vue/Angular/Solid/Preact thì hỏi vanilla hay component (và TS/JS); không có thì mặc định vanilla, không hỏi."
+    },
+    {
+      "title": "Step 3: Sinh HTML Pretext-native",
+      "instructionSummary": "Dùng mẫu Pattern 1-4 chính xác; nhúng bundle pretext.js vendored (fallback CDN esm.sh); viết MỘT file finalized.html có CSS custom properties, font + document.fonts.ready, HTML5 ngữ nghĩa, relayout bằng ResizeObserver, contenteditable + MutationObserver, breakpoints 375/768/1024/1440, ARIA, focus-visible, dark mode, reduced-motion, nội dung thật. Không đưa mẫu AI-slop mặc định (gradient tím, grid 3 cột, kicker, hero metric...) trừ khi mockup/DESIGN.md cho phép."
+    },
+    {
+      "title": "Step 3.5: Live preview",
+      "instructionSummary": "Khởi động python3 http.server 127.0.0.1 trong thư mục đầu ra (hoặc `open` nếu không có), ghi nhớ URL/PID, tắt server khi vòng tinh chỉnh kết thúc."
+    },
+    {
+      "title": "Step 4: Preview và vòng tinh chỉnh",
+      "instructionSummary": "Nếu detector sẵn sàng: quét một lần (một lượt sửa nhỏ + quét lại, phần còn lại ghi 'accepted-with-reason'). Chụp xác minh 3 viewport (375/768/1440) bằng gstack-render, tìm tràn chữ/vỡ layout. Vòng lặp tối đa 10 lần: cho người dùng xem HTML (và mockup để so), hỏi cần đổi gì, 'done' thì thoát; áp dụng chỉnh sửa bằng Edit có mục tiêu (không sinh lại cả file), chụp lại để xác minh."
+    },
+    {
+      "title": "Step 5: Lưu và bước kế",
+      "instructionSummary": "Nếu chưa có DESIGN.md thì đề nghị tạo từ token đã trích (định dạng mở, marker design-md-format=spec); ghi finalized.json (source mockup/plan, mode, file, tier Pretext, framework, số vòng, ngày, màn hình, nhánh); hỏi A copy vào project / B tinh chỉnh tiếp / C xong."
+    }
+  ],
+  "approvalGates": [
+    "Offer cài detector (một lần, chỉ trong phiên tương tác): A cài / B không / C đừng hỏi lại / D tắt.",
+    "Case B/C: người dùng phải chọn hướng đi (chạy skill khác, thiết kế từ plan, cung cấp PNG, hoặc mô tả).",
+    "Evolve hay start fresh khi đã có finalized.html.",
+    "Chọn định dạng đầu ra khi phát hiện framework.",
+    "Vòng tinh chỉnh: người dùng quyết định khi nào 'done'; sau 10 vòng phải hỏi tiếp tục hay xong.",
+    "Hỏi tạo DESIGN.md từ token đã trích (A/B).",
+    "Bước kế: copy vào project / tinh chỉnh / xong."
+  ],
+  "outputs": [
+    "finalized.html (hoặc finalized.tsx/.svelte/.vue) trong ~/.gstack/projects/<slug>/designs/<screen>-YYYYMMDD/.",
+    "finalized.json (metadata) cạnh file HTML.",
+    "Ảnh xác minh /tmp/gstack-verify-{mobile,tablet,desktop}.jpg.",
+    "DESIGN.md (nếu người dùng đồng ý); dependency @chenglou/pretext (nếu output framework)."
+  ],
+  "dependsOn": [
+    "design-shotgun (tạo approved.json và variant PNG)",
+    "plan-ceo-review (CEO plan)",
+    "plan-design-review (bối cảnh mockup)",
+    "design-consultation (DESIGN.md và định dạng mở)",
+    "Thư viện @chenglou/pretext (vendor/pretext.js hoặc CDN esm.sh)",
+    "design binary $D (`$D prompt`)",
+    "gstack bin: gstack-design-approved, gstack-render.ts, gstack-design-detect.ts (impeccable engine tuỳ chọn)",
+    "python3 http.server; Aside hoặc gstack browse",
+    "AskUserQuestion"
+  ],
+  "modes": [
+    {
+      "name": "approved-mockup",
+      "behavior": "Khớp pixel theo PNG đã duyệt; DESIGN.md quyết định token hệ thống."
+    },
+    {
+      "name": "plan-driven",
+      "behavior": "Không có PNG; dùng CEO plan/design review làm nguồn sự thật."
+    },
+    {
+      "name": "freeform",
+      "behavior": "Hỏi người dùng mô tả; nội dung thực tế được sinh."
+    },
+    {
+      "name": "evolve",
+      "behavior": "Áp thay đổi lên finalized.html cũ, giữ chỉnh sửa tay."
+    },
+    {
+      "name": "Pretext tier",
+      "behavior": "simple/card: prepare+layout; chat: shrinkwrap; editorial: layoutNextLine; phức tạp: layoutWithLines."
+    }
+  ],
+  "systemPromptCore": "You generate production-quality HTML where text layout is computed, not approximated, using the Pretext text-measurement library: text reflows on resize, heights adjust to content, chat bubbles shrinkwrap, editorial text flows around obstacles. First detect context: an approved mockup, a strategy plan, earlier variants, existing design tokens, or nothing; route accordingly and ask the user when context is missing or ambiguous. Extract an implementation spec (colors, fonts, spacing, components, layout type) from the mockup or the plan; design-system tokens override extracted values. Classify the design into a Pretext tier and use the matching API pattern (prepare and layout; segments with line-range walking; per-line layout around obstacles; full line rendering). Write one self-contained file with the Pretext source inlined, CSS custom properties, loaded fonts gating the first measurement, semantic HTML, responsive relayout at four breakpoints, accessibility attributes, dark mode, reduced motion, editable text that re-measures, and real content, never placeholder text. Avoid generic AI-slop patterns unless the approved design contains them. Serve a live preview, take screenshots at mobile, tablet and desktop widths, fix overflow or collapse, then loop with the user making small surgical edits only, never regenerating the whole file, until they say done (max ten rounds). Match an approved mockup pixel for pixel. Finally offer to extract tokens into a design-system file and save metadata."
+}

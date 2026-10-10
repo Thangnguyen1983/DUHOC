@@ -1,0 +1,96 @@
+{
+  "name": "claude-code",
+  "group": "second-opinion",
+  "purposeVi": "Phản chiếu của /codex cho môi trường không phải Claude Code: gọi Claude Code CLI (qua runner gstack-claude-code, chế độ không công cụ hoặc chỉ đọc) để review diff, challenge thay đổi hoặc consult về repo. Chỉ có mẫu .tmpl, được sinh cho host khác; không chạy bên trong Claude Code.",
+  "whenToUse": "Trên harness khác (ví dụ Codex) khi cần 'claude review', 'claude challenge', 'ask claude' hoặc ý kiến Claude Code rõ ràng.",
+  "inputs": [
+    {
+      "name": "mode",
+      "type": "enum",
+      "required": true,
+      "description": "review [instructions] | challenge [focus] | <câu hỏi> (consult)."
+    },
+    {
+      "name": "GSTACK_CLAUDE_MODEL",
+      "type": "env",
+      "required": false,
+      "description": "Ghi đè mô hình cho mọi lần gọi runner, kể cả resume."
+    },
+    {
+      "name": "GSTACK_CLAUDE_BIN / CLAUDE_BIN",
+      "type": "env",
+      "required": false,
+      "description": "Đường dẫn/ghi đè binary Claude CLI."
+    },
+    {
+      "name": "--role plan-review",
+      "type": "flag",
+      "required": false,
+      "description": "Chỉ khi nêu rõ: runner in CLAUDE_MODEL theo chính sách."
+    },
+    {
+      "name": ".context/claude-session-id",
+      "type": "file",
+      "required": false,
+      "description": "Phiên consult để tiếp tục."
+    },
+    {
+      "name": "prompt file",
+      "type": "file",
+      "required": true,
+      "description": "Prompt đầy đủ ghi vào tệp tạm riêng bằng công cụ ghi tệp; không bao giờ nội suy văn bản người dùng vào mã shell."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Chặn tự gọi",
+      "instructionSummary": "Nếu bản stale chạy trong Claude Code thì dừng, báo thiếu phủ ngoài, sửa bằng ./setup --host claude; không thay bằng nhà cung cấp khác."
+    },
+    {
+      "title": "Review",
+      "instructionSummary": "Prompt yêu cầu phát hiện có nhãn [P1]/[P2]/[P3] hoặc NO_FINDINGS; runner thêm toàn bộ diff nhánh + working tree vào prompt (Claude không có git); --access none."
+    },
+    {
+      "title": "Challenge",
+      "instructionSummary": "Giống review nhưng prompt đối kháng: edge case, race, lỗ hổng, rò rỉ, hỏng dữ liệu âm thầm, lỗi vận hành."
+    },
+    {
+      "title": "Consult",
+      "instructionSummary": "Hỏi tiếp tục hay phiên mới; --access read-only chỉ Read/Grep/Glob; lưu session id sau khi hoàn tất hợp lệ."
+    },
+    {
+      "title": "Xác thực kết quả",
+      "instructionSummary": "status completed, không is_error, result không rỗng; review/challenge qua validateOutsideReview (thiếu nhãn = thiếu phủ ngoài, không phải sạch)."
+    },
+    {
+      "title": "Trình bày",
+      "instructionSummary": "Khối CLAUDE CODE SAYS (review|challenge|consult) nguyên văn, kèm usage/model, rồi tổng hợp của host."
+    }
+  ],
+  "approvalGates": [
+    "Consult: tiếp tục phiên hay tạo mới",
+    "Xác thực/auth lỗi: báo lỗi thật của lần gọi, yêu cầu người dùng xác thực claude",
+    "Resume lỗi: chỉ thử lại một lần với phiên mới khi lỗi nêu rõ session không hợp lệ",
+    "Thông thường dùng hệ thống phê duyệt của host cho lần gọi runner thật"
+  ],
+  "outputs": [
+    "Khối CLAUDE CODE SAYS nguyên văn + Usage/Model(s) + SESSION_ID",
+    ".context/claude-session-id (chỉ consult hoàn tất hợp lệ)",
+    "Báo cáo 'unavailable outside coverage' khi timeout/rỗng/sai định dạng/từ chối"
+  ],
+  "dependsOn": [
+    "bin/gstack-claude-code (runner)",
+    "Claude CLI (claude -p)",
+    "bun + lib/outside-review-result.ts",
+    "git (diff so với nhánh nền)",
+    "host không phải Claude Code"
+  ],
+  "modes": [
+    "review (không công cụ)",
+    "challenge (không công cụ)",
+    "consult (Read/Grep/Glob, có resume)",
+    "wall timeout 10 phút, trần đầu ra 32 MiB"
+  ],
+  "riskLevel": "read",
+  "systemPromptCore": "You provide a second opinion from the Claude Code CLI to hosts that are not Claude Code. If a stale copy is running inside Claude Code, stop without spawning anything and report unavailable outside coverage. All three modes go through a single runner that passes the prompt on stdin, disables slash commands, MCP and custom hooks, and enforces a timeout and output cap. Review and challenge run with no tools; the runner appends the full branch plus working-tree diff to the prompt because the nested model cannot execute git. Ask for severity-labelled findings or an explicit no-findings marker. Consult mode allows only read, grep and glob and may resume a saved session after asking the user. Write the full prompt to a private temporary file with the file tool; never interpolate user text into shell source. Do not infer authentication from files or environment variables; run the real invocation and report only the actual error. Validate the response: it must be completed, not an error, and non-empty, and review output must contain the required markers; otherwise report missing outside coverage rather than a clean review. Present output verbatim in a labelled block, list every model used, then add your own synthesis. Never substitute another provider, and only delete a stored session on an explicit invalid-session error."
+}

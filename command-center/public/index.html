@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trung tâm điều khiển</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>Trung tâm điều khiển</h1>
+  <span id="provider" class="pill"></span>
+  <span id="freeze" class="pill"></span>
+  <button id="freeze-btn" class="ghost">Freeze…</button>
+</header>
+<main>
+  <aside id="skills" aria-label="Danh sách skill">
+    <input id="skill-search" type="search" placeholder="Tìm skill…">
+    <div id="skill-list"></div>
+  </aside>
+  <section id="center">
+    <form id="cmd-form">
+      <div class="row">
+        <label>Workspace
+          <input id="workspace" required>
+        </label>
+        <button type="button" id="browse" class="ghost">Chọn…</button>
+        <label>Chế độ sửa file
+          <select id="mode">
+            <option value="ask">Hỏi mọi thay đổi</option>
+            <option value="auto-edit">Tự sửa file thường (lệnh vẫn hỏi)</option>
+          </select>
+        </label>
+      </div>
+      <textarea id="cmd" rows="3" placeholder="/review kiểm tra diff của nhánh này   — hoặc mô tả việc cần làm, hệ thống sẽ gợi ý skill"></textarea>
+      <div class="row">
+        <button type="submit" id="run">Chạy</button>
+        <span id="form-msg" role="status"></span>
+      </div>
+      <div id="suggestions"></div>
+      <div id="pipelines"></div>
+    </form>
+    <div id="run-view" hidden>
+      <div class="row spread">
+        <h2 id="run-title"></h2>
+        <button id="stop" class="danger" hidden>Dừng</button>
+      </div>
+      <div id="timeline" aria-live="polite"></div>
+      <div id="next-steps"></div>
+    </div>
+  </section>
+  <aside id="runs" aria-label="Lượt chạy">
+    <h3>Lượt chạy</h3>
+    <div id="run-list"></div>
+  </aside>
+</main>
+<dialog id="dir-dialog">
+  <p id="dir-path"></p>
+  <div id="dir-list"></div>
+  <div class="row"><button id="dir-pick">Chọn thư mục này</button><button id="dir-up" class="ghost">Lên một cấp</button><button id="dir-close" class="ghost">Đóng</button></div>
+</dialog>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

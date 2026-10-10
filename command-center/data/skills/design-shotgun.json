@@ -1,0 +1,122 @@
+{
+  "name": "design-shotgun",
+  "group": "design",
+  "purposeVi": "Khám phá thiết kế trực quan: sinh song song nhiều biến thể thiết kế bằng AI, mở bảng so sánh (comparison board) trong trình duyệt, thu feedback có cấu trúc (xếp hạng, nhận xét, remix, regenerate) và lặp đến khi người dùng duyệt một hướng. Là công cụ brainstorm thị giác chạy độc lập, không phải quy trình review.",
+  "whenToUse": "Khi người dùng nói 'explore designs', 'show me options', 'design variants', 'visual brainstorm', 'I don't like how this looks', hoặc mô tả một tính năng UI mà chưa thấy nó có thể trông thế nào. Cũng được các skill khác (plan-design-review, design-consultation) gọi.",
+  "inputs": [
+    {
+      "name": "designBrief",
+      "type": "văn bản (hoặc $_DESIGN_BRIEF từ skill gọi)",
+      "required": true,
+      "description": "5 chiều ngữ cảnh: ai, việc cần làm, cái đã có, luồng người dùng, edge case; hỏi tối đa 2 vòng rồi dùng giả định."
+    },
+    {
+      "name": "variantCount",
+      "type": "số nguyên (mặc định 3, tối đa 7-8)",
+      "required": false,
+      "description": "Số hướng thiết kế."
+    },
+    {
+      "name": "DESIGN.md / PRODUCT.md",
+      "type": "file",
+      "required": false,
+      "description": "Ràng buộc mặc định; khi có DESIGN.md thì giữ font+palette và chỉ đổi layout/composition."
+    },
+    {
+      "name": "screenshotUrl",
+      "type": "URL",
+      "required": false,
+      "description": "Cho trường hợp 'tôi không thích TRANG NÀY': chụp màn hình và tạo biến thể cải tiến; không đoán URL, phải hỏi."
+    },
+    {
+      "name": "tasteMemory",
+      "type": "taste-profile.json và approved.json cũ (tối đa 10)",
+      "required": false,
+      "description": "Thiên lệch sinh theo gu người dùng."
+    },
+    {
+      "name": "designBinary",
+      "type": "$D",
+      "required": true,
+      "description": "Cần DESIGN_READY; nếu không thì không sinh được ảnh."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Setup",
+      "instructionSummary": "Chạy DESIGN SETUP để xác định $D; đọc phần doctrine (nguyên tắc UX: Don't make me think, người dùng quét không đọc, quy ước, hierarchy, wayfinding, goodwill reservoir, mobile 44px) trước khi viết concept hay brief."
+    },
+    {
+      "title": "Step 0: Session detection",
+      "instructionSummary": "Tìm approved.json của các phiên trước; nếu có thì hiển thị tóm tắt và hỏi A mở lại board / B khám phá mới / C khác. Nếu chưa có thì hiện thông điệp giới thiệu."
+    },
+    {
+      "title": "Step 1: Thu thập ngữ cảnh",
+      "instructionSummary": "Nếu được skill khác gọi và đã có $_DESIGN_BRIEF thì bỏ qua. Độc lập: tự thu DESIGN.md, PRODUCT.md, cấu trúc src, output office-hours, kiểm tra localhost:3000; MỘT AskUserQuestion điền sẵn những gì suy ra và hỏi phần thiếu + số biến thể; tối đa 2 vòng."
+    },
+    {
+      "title": "Step 2: Taste memory",
+      "instructionSummary": "Đọc taste profile bền vững và các approved.json cũ (try/catch, giải ảnh bằng gstack-design-approved); sau phiên cập nhật bằng gstack-taste-update approved/rejected."
+    },
+    {
+      "title": "Step 3a-3b: Concept và xác nhận",
+      "instructionSummary": "Trước khi tốn tiền API, viết N concept văn bản (A, B, C...) mỗi cái là một hướng thật sự khác nhau (kiểm tra: đổi tiêu đề giữa hai biến thể có ai nhận ra không?); hỏi A tạo tất cả / B sửa / C thêm / D bớt (tối đa 2 vòng)."
+    },
+    {
+      "title": "Step 3c-3d: Sinh song song",
+      "instructionSummary": "Nếu từ screenshot thì chụp qua Aside. Ghi briefs.json (mỗi concept một brief đầy đủ), chạy một lệnh `$D variants --briefs-file` (timeout 10 phút, staging trong thư mục tạm), công bố từng ảnh bằng gstack-design-claim (không bao giờ cp/mv đè), báo cáo số ảnh lưu được và lỗi, thử lại một lần cho biến thể retryable, rơi về tuần tự nếu 0 thành công, rồi đọc từng ảnh inline."
+    },
+    {
+      "title": "Step 4: Comparison board + feedback loop",
+      "instructionSummary": "Ghi board-images.json, lưu feedback cũ, dựng board bằng `$D compare --serve`, chờ bằng AskUserQuestion có URL board. Đọc feedback.json (Submit) hoặc feedback-pending.json (Regenerate/Remix/More like X) và lặp: sinh lại, dựng lại board, nạp lại qua API reload cho tới khi Submit. Có fallback khi server board lỗi."
+    },
+    {
+      "title": "Step 5: Xác nhận feedback",
+      "instructionSummary": "Tóm tắt PREFERRED, RATINGS, NOTES, DIRECTION và hỏi 'đúng không?' trước khi lưu."
+    },
+    {
+      "title": "Step 6: Lưu và bước kế",
+      "instructionSummary": "Ghi approved.json (variant, đường dẫn ảnh, feedback, ngày, màn hình, nhánh). Nếu được skill khác gọi thì trả feedback có cấu trúc. Nếu độc lập: hỏi A tinh chỉnh / B hoàn thiện thành HTML qua /design-html / C lưu vào plan / D xong."
+    }
+  ],
+  "approvalGates": [
+    "Xác nhận concept trước khi gọi API tốn tiền (Step 3b).",
+    "Chờ người dùng gửi feedback trên board (AskUserQuestion chỉ để chờ; KHÔNG hỏi chọn biến thể ở chat khi board chạy).",
+    "Xác nhận cách hiểu feedback (Step 5) trước khi lưu approved.json.",
+    "Hỏi URL nếu người dùng nói 'trang này' nhưng chưa nêu; không đoán.",
+    "Hỏi mở lại hay làm mới nếu có phiên trước; hỏi bước kế khi chạy độc lập."
+  ],
+  "outputs": [
+    "~/.gstack/projects/<slug>/designs/<screen>-<date>/: briefs.json, variant-*.png, board-images.json, design-board.html, feedback.json / feedback-pending.json, approved.json, current.png (nếu evolve).",
+    "Cập nhật taste-profile.json qua gstack-taste-update.",
+    "Phản hồi có cấu trúc trả cho skill gọi (plan-design-review, design-consultation)."
+  ],
+  "dependsOn": [
+    "design binary $D (OpenAI image + vision)",
+    "gstack bin: gstack-design-claim, gstack-design-approved, gstack-taste-update, gstack-slug, gstack-paths",
+    "Aside browser (chụp screenshot) và trình duyệt mặc định (board)",
+    "jq, curl (reload board)",
+    "AskUserQuestion",
+    "design-html (bước kế), plan-design-review / design-consultation (gọi skill này)",
+    "DESIGN.md (ràng buộc mặc định)"
+  ],
+  "modes": [
+    {
+      "name": "Standalone",
+      "behavior": "Tự thu thập ngữ cảnh, hỏi tối đa 2 vòng."
+    },
+    {
+      "name": "Invoked-by-skill",
+      "behavior": "Bỏ qua bước ngữ cảnh khi đã có $_DESIGN_BRIEF và trả approved.json cho skill gọi."
+    },
+    {
+      "name": "Evolve from screenshot",
+      "behavior": "Chụp trang hiện tại và sinh biến thể cải tiến dựa vào ảnh."
+    },
+    {
+      "name": "Revisit",
+      "behavior": "Dựng lại board từ biến thể có sẵn của phiên trước."
+    }
+  ],
+  "systemPromptCore": "You are a design brainstorming partner. Generate several genuinely different AI design variants for a screen, show them side by side in a comparison board, collect structured feedback, and iterate until the user approves a direction. This is visual exploration, not review. Check for earlier sessions and offer to revisit. Build a brief from five dimensions (who it is for, job to be done, what already exists, user flow, edge cases), pre-filling from the design system file, product notes and codebase and asking once for the gaps; never more than two rounds, then proceed with stated assumptions. Read taste memory to bias generation, but treat the design system file as the default constraint: keep its fonts and palette and vary layout and composition; without one, vary fonts, palette and layout. Write one distinct concept per variant, check that they would not be mistaken for siblings, and get confirmation before spending generation credits. Generate all variants in a single parallel call, never overwrite files, report how many images saved and every failure, retry once, and fall back to sequential generation. Show the images inline, open the board, and wait for the user's submitted feedback instead of asking which variant they prefer in chat. Handle regenerate and remix requests by rewriting briefs and reloading the board. Summarize the feedback and confirm understanding before saving the approved choice, then offer next steps."
+}

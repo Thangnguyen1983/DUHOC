@@ -1,0 +1,53 @@
+{
+  "name": "freeze",
+  "group": "safety",
+  "purposeVi": "Khóa phạm vi chỉnh sửa vào một thư mục: hook PreToolUse chặn cứng (deny) Edit/Write/NotebookEdit ngoài thư mục đã chọn. Ranh giới được lưu bền trong tệp trạng thái cho đến khi /unfreeze. Chỉ ngăn nhầm lẫn, không phải ranh giới bảo mật.",
+  "whenToUse": "Khi debug để tránh 'sửa nhầm' mã không liên quan hoặc muốn giới hạn thay đổi vào một module: 'freeze', 'only edit this folder', 'lock down edits'.",
+  "inputs": [
+    {
+      "name": "directory",
+      "type": "path",
+      "required": true,
+      "description": "Thư mục được phép sửa, người dùng gõ tay (không phải lựa chọn); được chuyển thành đường dẫn tuyệt đối vật lý."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Hỏi thư mục",
+      "instructionSummary": "AskUserQuestion dạng nhập văn bản."
+    },
+    {
+      "title": "2 Ghi ranh giới",
+      "instructionSummary": "Chạy freeze-state.sh set <path>: khóa mutex bằng mkdir, resolve pwd -P, ghi tệp freeze-dir.txt kèm owner token qua tệp tạm + mv nguyên tử; FREEZE_BUSY thì không đổi gì."
+    },
+    {
+      "title": "3 Báo cáo",
+      "instructionSummary": "Chỉ báo thành công nếu script thành công; nhắc /freeze lại để đổi, /unfreeze để gỡ."
+    },
+    {
+      "title": "4 Thực thi liên tục",
+      "instructionSummary": "check-freeze.sh đọc tệp trạng thái mỗi lần Edit/Write/NotebookEdit, chuẩn hóa đường dẫn, theo symlink đến đích cuối, deny nếu nằm ngoài; fail-closed khi không đọc được payload hay thiếu helper."
+    }
+  ],
+  "approvalGates": [
+    "Người dùng chọn thư mục ranh giới (nhập tay)",
+    "Mọi chỉnh sửa ngoài ranh giới bị deny tự động, không có nút ghi đè - phải /unfreeze"
+  ],
+  "outputs": [
+    "Tệp $GSTACK_STATE_ROOT/freeze-dir.txt (thư mục + 'gstack-freeze-v1:<owner>')",
+    "Thông báo ranh giới có hiệu lực",
+    "Log hook_fire boundary_deny khi chặn"
+  ],
+  "dependsOn": [
+    "freeze/bin/freeze-state.sh",
+    "freeze/bin/check-freeze.sh",
+    "careful/bin/hook-extract.sh (bộ trích JSON dùng chung)",
+    "unfreeze (gỡ)"
+  ],
+  "modes": [
+    "persistent boundary (sống sót qua phiên)",
+    "fail-closed"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "Edit scope is locked to a single directory chosen by the user. Ask the user to type the directory path (a text input, not a menu), then set the boundary only through the shared state-writer script, which resolves a physical absolute path and serializes changes with a lock; never write or delete the state file directly. If the writer reports it is busy or finds unexpected state, preserve everything and ask the user to inspect recovery. Only report success when the script succeeds. From then on a pre-tool hook denies any Edit, Write or notebook edit whose target is outside the boundary; paths are normalized, symlinks are followed to their final target, and an unparseable payload is denied (fail closed). The boundary has a trailing separator so a sibling directory with a similar prefix does not match. Read, search and shell tools are not restricted, so shell commands can still modify files elsewhere; this prevents accidents and is not a security boundary. Tell the user: to change the boundary run freeze again, to remove it run unfreeze; ending the conversation does not remove the persisted state. When a block occurs, do not try to work around it with shell edits; explain and ask the user to widen or remove the boundary."
+}

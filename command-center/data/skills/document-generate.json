@@ -1,0 +1,91 @@
+{
+  "name": "document-generate",
+  "group": "docs",
+  "purposeVi": "Viết tài liệu còn thiếu từ đầu cho một tính năng, module hoặc cả dự án theo khung Diataxis (tutorial / how-to / reference / explanation) sau khi nghiên cứu kỹ mã nguồn và test.",
+  "whenToUse": "Khi cần 'write docs', 'document this feature', 'create a tutorial', 'explain this module', hoặc khi /document-release báo lỗ hổng độ phủ.",
+  "inputs": [
+    {
+      "name": "target",
+      "type": "string",
+      "required": true,
+      "description": "Tính năng, module, tệp hoặc cả dự án cần viết tài liệu; hoặc danh sách thực thể từ bản đồ độ phủ."
+    },
+    {
+      "name": "output location",
+      "type": "enum",
+      "required": true,
+      "description": "A: sửa tệp có sẵn / B: tệp riêng trong docs/ / C: cả hai (khuyến nghị)."
+    },
+    {
+      "name": "docs framework",
+      "type": "config",
+      "required": false,
+      "description": "Nextra/Docusaurus/MkDocs/VitePress nếu có thì theo định dạng đó."
+    }
+  ],
+  "steps": [
+    {
+      "title": "0 Phạm vi & ý định",
+      "instructionSummary": "Xác định mục tiêu, hỏi A/B/C vị trí ghi, xác định định dạng theo docs/ hoặc framework có sẵn."
+    },
+    {
+      "title": "1 Khảo cổ mã nguồn",
+      "instructionSummary": "Lập bản đồ cấu trúc, đọc điểm vào, đọc toàn bộ mã và test từng thực thể, lập concept map; báo số tệp/bề mặt/khái niệm/quyết định."
+    },
+    {
+      "title": "2 Phân hoạch Diataxis",
+      "instructionSummary": "Theo ma trận loại thực thể quyết định quadrant nào cần viết; nếu hơn 5 tài liệu thì hỏi xác nhận."
+    },
+    {
+      "title": "3 Reference trước",
+      "instructionSummary": "Chính xác hơn trau chuốt: kiểu, mặc định, ràng buộc, ví dụ chạy được, không giải thích 'vì sao'."
+    },
+    {
+      "title": "4 Explanation",
+      "instructionSummary": "Mở bằng vấn đề, sơ đồ ASCII/Mermaid, nêu đánh đổi và phương án đã cân nhắc."
+    },
+    {
+      "title": "5 How-to",
+      "instructionSummary": "Tiêu đề bắt đầu bằng 'How to', bước hành động, mục Verification, Troubleshooting."
+    },
+    {
+      "title": "6 Tutorial",
+      "instructionSummary": "Kết quả đầu tiên trong tối đa 3 bước, mỗi bước có đầu ra thấy được, lệnh chính xác, kết bằng 'What you built'."
+    },
+    {
+      "title": "7 Liên kết chéo & khả năng khám phá",
+      "instructionSummary": "Liên kết giữa các quadrant, cập nhật README/CLAUDE.md/sidebar, mọi tài liệu trong 2 cú nhấp từ README, kiểm link hỏng."
+    },
+    {
+      "title": "8 Tự review chất lượng",
+      "instructionSummary": "Cổng chính xác, đầy đủ, giọng văn; sửa trước khi commit."
+    },
+    {
+      "title": "9 Commit & đầu ra",
+      "instructionSummary": "Stage từng file theo tên, quét bí mật bằng gstack-redact (HIGH thì bỏ stage), commit docs:, push, cập nhật PR body mục 'Documentation Generated', in tóm tắt."
+    }
+  ],
+  "approvalGates": [
+    "Chọn nơi ghi tài liệu (A/B/C)",
+    "Kế hoạch có hơn 5 tài liệu cần tạo",
+    "Quét bí mật: phát hiện HIGH thì chặn commit đến khi gỡ"
+  ],
+  "outputs": [
+    "Tệp tài liệu mới/cập nhật (tutorial, how-to, reference, explanation)",
+    "Commit 'docs: generate [scope] documentation (Diataxis)' và push",
+    "Mục 'Documentation Generated' trong PR body nếu có PR",
+    "Tóm tắt có cấu trúc: số tệp, độ phủ từng quadrant, kết quả các cổng chất lượng"
+  ],
+  "dependsOn": [
+    "document-release (bên gọi tùy chọn)",
+    "gstack-redact",
+    "gh (cập nhật PR)",
+    "git"
+  ],
+  "modes": [
+    "standalone",
+    "gọi từ document-release với danh sách lỗ hổng"
+  ],
+  "riskLevel": "write-remote",
+  "systemPromptCore": "You write documentation using the Diataxis framework. Research the whole before writing any part: map the project, read entry points, read every implementation file end to end plus its tests, and build a concept map (purpose, key concepts, public surface, dependencies, edge cases, design decisions). Confirm scope and where to write (inline in existing files, standalone docs, or both). Decide which of the four quadrants each entity needs and confirm with the user if more than five documents will be created. Write reference first: factual, complete, with types, defaults and constraints, copy-paste-valid examples, no rationale. Then explanation: lead with the problem, use diagrams, name trade-offs. Then how-to guides: title starts with 'How to', actionable steps, verification, troubleshooting. Then tutorials: first visible result within three steps, exact commands, ending with what was built. Never mix quadrants. Cross-link all documents and add them to the README or navigation so each is within two clicks. Self-review for accuracy (examples run, signatures match), completeness and voice (friendly, concrete, user-forward). Before committing, stage files by name and scan staged content for live credentials; block on high-severity hits. Commit, push, and document the generated files in the PR body."
+}

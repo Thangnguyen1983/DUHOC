@@ -1,0 +1,38 @@
+{
+  "name": "benchmark-models",
+  "group": "Health & Performance",
+  "purposeVi": "Chạy cùng một prompt qua nhiều mô hình (Claude, GPT qua Codex CLI, Gemini) và so sánh độ trễ, token, chi phí, tùy chọn chất lượng qua LLM judge, để chọn mô hình dựa trên dữ liệu thay vì cảm tính.",
+  "whenToUse": "Khi người dùng nói 'benchmark models', 'compare models', 'which model is best for X', 'cross-model comparison', 'model shootout'. Không dùng cho hiệu năng web (dùng /benchmark).",
+  "inputs": [
+    {"name": "prompt", "type": "SKILL.md của một skill | prompt nội tuyến | đường dẫn file prompt", "required": true, "description": "Prompt phải nằm trong file; prompt nội tuyến được ghi vào file tạm riêng, không bao giờ nhét vào lệnh shell."},
+    {"name": "providers", "type": "claude,gpt,gemini (một tập con)", "required": true, "description": "Danh sách do người dùng chọn sau dry-run; không hardcode tên mô hình."},
+    {"name": "judge", "type": "boolean", "required": false, "description": "Bật --judge để chấm chất lượng 0-10 bằng Claude (khoảng 0.05 USD/lần); chỉ khi có ANTHROPIC key và người dùng đồng ý."},
+    {"name": "saveResults", "type": "boolean", "required": false, "description": "Lưu JSON vào ~/.gstack/benchmarks/<date>-<slug>.json."},
+    {"name": "binary", "type": "gstack-model-benchmark", "required": true, "description": "Binary cài cùng gstack."}
+  ],
+  "steps": [
+    {"title": "Step 0: Xác định binary", "instructionSummary": "Tìm gstack-model-benchmark; không có thì dừng và yêu cầu cài lại gstack."},
+    {"title": "Step 1: Chọn prompt", "instructionSummary": "Hỏi A) benchmark một skill gstack (rồi hỏi chọn skill), B) prompt nội tuyến, C) file có sẵn. Prompt nội tuyến phải ghi vào file tạm bằng công cụ ghi file, đường dẫn có ký tự đặc biệt thì sao chép sang file mới."},
+    {"title": "Step 2: Chọn nhà cung cấp", "instructionSummary": "Bắt buộc chạy dry-run trước để hiện trạng thái xác thực từng nhà cung cấp. Cả ba NOT READY thì dừng, gợi ý đăng nhập. Ngược lại hỏi: tất cả nhà cung cấp đã xác thực / chỉ Claude / chọn hai."},
+    {"title": "Step 3: Quyết định judge", "instructionSummary": "Kiểm tra khoá Anthropic; nếu có thì hỏi bật judge (tốn thêm chi phí), không có thì bỏ qua câu hỏi và không truyền --judge."},
+    {"title": "Step 4: Chạy benchmark", "instructionSummary": "Dựng lệnh từ các lựa chọn, kiểm tra file prompt không rỗng, chạy với --output table; truyền kết quả theo dòng chảy (30 giây đến 5 phút)."},
+    {"title": "Step 5: Diễn giải", "instructionSummary": "Tóm tắt nhanh nhất, rẻ nhất, chất lượng cao nhất (nếu có judge), tổng thể tốt nhất theo phán đoán; nêu lỗi nhà cung cấp (xác thực/timeout/rate limit) kèm cách khắc phục."},
+    {"title": "Step 6: Lưu kết quả", "instructionSummary": "Hỏi có lưu không; nếu có thì chạy lại với --output json và ghi vào ~/.gstack/benchmarks, in đường dẫn để so sánh các lần sau."}
+  ],
+  "approvalGates": [
+    "Chọn nguồn prompt (skill / nội tuyến / file)",
+    "Chọn nhà cung cấp sau khi xem dry-run xác thực; không chạy thật trước dry-run",
+    "Judge chỉ bật khi người dùng chủ động đồng ý (có chi phí)",
+    "Lưu kết quả là tùy chọn",
+    "Nếu không nhà cung cấp nào được xác thực thì dừng, không cố chạy"
+  ],
+  "outputs": [
+    "Bảng so sánh độ trễ, token, chi phí theo từng nhà cung cấp (và điểm chất lượng nếu có judge)",
+    "Tóm tắt: fastest, cheapest, highest quality, best overall kèm đánh đổi",
+    "Báo lỗi nhà cung cấp kèm hướng khắc phục",
+    "File JSON ~/.gstack/benchmarks/<date>-<slug>.json (nếu lưu)"
+  ],
+  "dependsOn": ["bin/gstack-model-benchmark", "Claude CLI, Codex CLI, Gemini CLI/API key (tùy nhà cung cấp)", "ANTHROPIC_API_KEY hoặc thông tin xác thực Claude (cho judge)", "git (để định vị .gstack/tmp)"],
+  "modes": ["Benchmark skill gstack", "Prompt nội tuyến", "Prompt từ file", "Có/không judge", "Output table hoặc json"],
+  "systemPromptCore": "You run a cross-model benchmark by wrapping the project's model-benchmark binary in an interactive flow. First locate the binary and stop if it is missing. Let the user pick the prompt source: a real skill file (recommended, because it exposes tool-use differences), an inline prompt, or an existing file; any inline text must be written into a private temporary file with the file-write tool and never interpolated into a shell command, and paths containing quotes, backticks, dollar signs or backslashes must be copied to a safe file first. Always run the binary in dry-run mode before any real run so the user sees which providers are authenticated and which will be skipped; if none are ready, stop and suggest logging in. Never hardcode model names: pass only the providers the user selected. Offer the quality judge only when credentials exist, explain that it adds real cost, and never enable it without explicit consent. Run the benchmark with a table output, streaming results, and then summarize the fastest, cheapest, highest-quality (only if judged) and best overall provider, stating the tradeoff plainly when no judge ran. Call out any provider that errored (authentication, timeout, rate limit) with the remedy. Offer to save a JSON baseline so future runs can be compared, since provider quality drifts over time. Make per-provider cost visible after every run."
+}

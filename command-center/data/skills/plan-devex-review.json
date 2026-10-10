@@ -1,0 +1,144 @@
+{
+  "name": "plan-devex-review",
+  "group": "plan-review",
+  "purposeVi": "Review trải nghiệm lập trình viên (DX) của kế hoạch cho sản phẩm hướng dev (API, CLI, SDK, thư viện, nền tảng, tài liệu, skill cho agent). Điều tra trước khi chấm điểm: persona, bản tường thuật đồng cảm, benchmark đối thủ, 'khoảnh khắc kỳ diệu', hành trình, rồi chấm 8 chiều DX. Có 3 chế độ DX EXPANSION / POLISH / TRIAGE.",
+  "whenToUse": "Khi kế hoạch có bề mặt dành cho developer ('DX review', 'developer experience audit', 'devex review', 'API design review'). Nếu không có bề mặt dev thì thoát và gợi ý plan-eng-review/plan-design-review. Sau khi ship, dùng /devex-review (boomerang) để đo thực tế.",
+  "inputs": [
+    {
+      "name": "plan",
+      "type": "file/diff",
+      "required": true,
+      "description": "Kế hoạch cần review."
+    },
+    {
+      "name": "productType",
+      "type": "enum: API/Service | CLI | Library/SDK | Platform | Documentation | Claude Code Skill",
+      "required": true,
+      "description": "Tự suy ra rồi xin xác nhận."
+    },
+    {
+      "name": "persona",
+      "type": "mô tả developer mục tiêu",
+      "required": true,
+      "description": "Chọn từ các archetype dựa trên README/docs; do người dùng xác nhận ở 0A."
+    },
+    {
+      "name": "ttHWTarget",
+      "type": "enum: Champion(<2m)|Competitive(2-5m)|Current|Realistic",
+      "required": true,
+      "description": "Mục tiêu thời gian tới hello world ở bước 0C."
+    },
+    {
+      "name": "mode",
+      "type": "enum: DX_EXPANSION|DX_POLISH|DX_TRIAGE",
+      "required": false,
+      "description": "Nếu người dùng chưa nêu thì hỏi (mặc định gợi ý theo bối cảnh)."
+    },
+    {
+      "name": "repoDocs",
+      "type": "README, docs/, package.json, CHANGELOG, CLI --help, examples/",
+      "required": false,
+      "description": "Bằng chứng thực cho hành trình và tường thuật."
+    },
+    {
+      "name": "hallOfFame",
+      "type": "dx-hall-of-fame.md",
+      "required": false,
+      "description": "Chỉ đọc đúng phần của pass đang chạy."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Pre-review audit và nhận diện sản phẩm",
+      "instructionSummary": "git log/diff so với base remote đã phát hiện, đọc plan/README/design doc; suy ra loại sản phẩm; nếu KHÔNG có bề mặt dev thì thoát. Xin xác nhận loại sản phẩm TRƯỚC khi khám phá sâu."
+    },
+    {
+      "title": "0A: Persona",
+      "instructionSummary": "Thu bằng chứng từ README/package.json/docs, đưa 3 archetype persona liên quan + tuỳ chọn tự mô tả; DỪNG. Ghi thẻ persona (who/context/tolerance/expects) trong ghi chú tạm."
+    },
+    {
+      "title": "0B: Empathy narrative",
+      "instructionSummary": "Viết tường thuật ngôi thứ nhất 150-250 từ dựa trên nội dung thật (phân biệt quan sát và dự đoán), hiện cho người dùng xác nhận/sửa, DỪNG."
+    },
+    {
+      "title": "0C: Competitive benchmark + TTHW",
+      "instructionSummary": "Định nghĩa đồng hồ (điểm bắt đầu tới kết quả hữu ích), nghiên cứu đối thủ qua Aside/WebSearch, lập bảng benchmark có loại bằng chứng, rồi hỏi mục tiêu TTHW (Champion/Competitive/Current/khác) trước khi ghi bất kỳ file nào."
+    },
+    {
+      "title": "0D: Magical moment",
+      "instructionSummary": "Xác định khoảnh khắc kỳ diệu cho loại sản phẩm, đưa các phương tiện chuyển giao với đánh đổi và khuyến nghị; hỏi chọn."
+    },
+    {
+      "title": "0E: Chọn chế độ",
+      "instructionSummary": "Nếu chưa chọn: EXPANSION (đẩy cạnh tranh, mở rộng opt-in từng cái) / POLISH (khuyến nghị, làm chặt từng điểm chạm trong scope) / TRIAGE (chỉ lỗ hổng chặn adoption). Cam kết chế độ đã chọn."
+    },
+    {
+      "title": "0F-0G: Hành trình và roleplay",
+      "instructionSummary": "Theo dõi 6 giai đoạn (Discover, Install, Hello World, Real Usage, Debug, Upgrade; TRIAGE chỉ Install+Hello World) trích file/dòng thật, hỏi từng điểm ma sát (A sửa / B thay thế / C ghi tài liệu / D chấp nhận); xuất bảng journey map; viết báo cáo 'first-time developer' có mốc thời gian dựa trên docs/code thực."
+    },
+    {
+      "title": "Decision gate",
+      "instructionSummary": "Mọi giai đoạn dùng một danh sách: nguồn/bằng chứng, giá trị hiện tại, đề xuất, phê duyệt+phạm vi. Công việc kiểm chứng hợp đồng đã khai báo là review thường, không cần hỏi; lựa chọn mới độc lập thì mỗi cái một AskUserQuestion."
+    },
+    {
+      "title": "8 pass chấm điểm 0-10",
+      "instructionSummary": "Mỗi pass: gọi lại bằng chứng Step 0, đọc đúng phần Hall of Fame, chấm, sửa trong scope, chấm lại. Pass 1 Getting Started (zero friction, Stripe test), 2 API/CLI/SDK design, 3 Error messages & debugging (3 tầng Elm/Rust/Stripe), 4 Documentation, 5 Upgrade/Migration, 6 Dev environment & tooling, 7 Community & ecosystem, 8 DX measurement & feedback loops (đo đúng đồng hồ đã duyệt). Phụ lục checklist DX cho Claude Code skill (không chấm điểm)."
+    },
+    {
+      "title": "Outside voice",
+      "instructionSummary": "Chạy giọng độc lập (Codex/subagent) với cùng bối cảnh persona, đồng hồ, mục tiêu; tích hợp phát hiện qua decision gate."
+    },
+    {
+      "title": "Required outputs",
+      "instructionSummary": "Persona Card, Empathy Narrative, Competitive Benchmark, Magical Moment Spec, Journey Map, Confusion Report, NOT in scope, What already exists, TODOS (hỏi riêng), DX Scorecard (có xu hướng so với lần trước), DX Implementation Checklist, Implementation Tasks (+JSONL)."
+    },
+    {
+      "title": "Báo cáo, log, bước kế",
+      "instructionSummary": "Báo cáo ở cuối plan, review-log (initial/overall score, TTHW hiện tại/mục tiêu, mode, persona, tier), dashboard; menu: plan-eng-review (cổng), plan-design-review (nếu có UI), sẵn sàng + chạy /devex-review sau ship, bỏ qua."
+    }
+  ],
+  "approvalGates": [
+    "Xác nhận loại sản phẩm trước khi nghiên cứu sâu.",
+    "0A: chọn persona rồi DỪNG.",
+    "0B: xác nhận/sửa tường thuật đồng cảm rồi DỪNG.",
+    "0C: chọn mục tiêu TTHW (trước khi ghi bất cứ file nào của plan/báo cáo).",
+    "0D: chọn phương tiện chuyển giao khoảnh khắc kỳ diệu.",
+    "0E: chọn chế độ (nếu người dùng chưa nêu).",
+    "0F: mỗi điểm ma sát mới = một câu hỏi.",
+    "Mỗi quyết định độc lập mới hoặc mở lại, mỗi mở rộng (EXPANSION), mỗi phát hiện outside voice và mỗi TODO = một AskUserQuestion riêng.",
+    "Cổng thoát: báo cáo là section cuối, có Runs/Status/Findings và dòng trạng thái quyết định cuối."
+  ],
+  "outputs": [
+    "Plan cập nhật với Persona Card, Empathy Narrative, Benchmark, Magical Moment, Journey Map, Confusion Report, DX Scorecard, DX Implementation Checklist.",
+    "'## GSTACK REVIEW REPORT' ở cuối plan.",
+    "Tasks JSONL tasks-devex-review-*.jsonl; TODOS.md; review-log plan-devex-review (kèm TTHW và tier cạnh tranh)."
+  ],
+  "dependsOn": [
+    "office-hours (benefits-from)",
+    "plan-eng-review (bước kế bắt buộc)",
+    "plan-design-review (nếu có UI)",
+    "devex-review (boomerang sau ship)",
+    "autoplan (phase 2.5, bật khi có bề mặt dev)",
+    "dx-hall-of-fame.md",
+    "AskUserQuestion",
+    "Aside/WebSearch (benchmark)",
+    "Codex CLI hoặc subagent",
+    "gstack bin: gstack-review-log/read, gstack-slug",
+    "jq"
+  ],
+  "modes": [
+    {
+      "name": "DX EXPANSION",
+      "behavior": "Đẩy lên, đề xuất cải tiến vượt kế hoạch, mỗi mở rộng opt-in riêng; benchmark đầy đủ; outside voice khuyến nghị."
+    },
+    {
+      "name": "DX POLISH",
+      "behavior": "Giữ scope, làm chặt mọi điểm chạm (lỗi, docs, CLI help, getting started); không thiết kế lại API đã có để lấy điểm."
+    },
+    {
+      "name": "DX TRIAGE",
+      "behavior": "Chỉ lỗ hổng chặn adoption (<5); chỉ trace Install + Hello World; bỏ outside voice."
+    }
+  ],
+  "systemPromptCore": "You are a developer advocate reviewing a plan for a developer-facing product (API, CLI, SDK, library, platform, docs, agent skill). Do not change code. Investigate before scoring. Infer the product type and ask the user to confirm. Then, asking one question at a time and waiting: identify the target developer persona from README and docs evidence; write a first-person empathy narrative from verified content and ask whether it matches reality; benchmark competitors with a clearly defined clock (start state to first useful result) and ask for a time-to-hello-world target; design the product's magical moment; choose a mode (expansion, polish, triage). Trace the developer journey (discover, install, hello world, real use, debug, upgrade) with file-and-line evidence and roleplay a first-time developer with timestamps. Separate observed facts from predictions; never invent runtime output. Then score eight dimensions 0-10 against evidence (getting started, API design, error messages, docs, upgrade path, dev environment, community, measurement), explain what a 10 looks like for this persona, fix in-scope gaps only after an explicit decision, and re-score. Reuse prior approvals; each new independent choice is its own question. Never add scope merely to reach a 10. Output persona card, benchmark, journey map, scorecard, implementation checklist, tasks, and a final review report."
+}

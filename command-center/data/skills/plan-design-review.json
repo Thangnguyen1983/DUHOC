@@ -1,0 +1,128 @@
+{
+  "name": "plan-design-review",
+  "group": "plan-review",
+  "purposeVi": "Review kế hoạch dưới góc nhìn nhà thiết kế: chấm điểm 0-10 từng chiều thiết kế của PLAN (không phải site thật), giải thích cái gì làm nên 10/10, rồi sửa chính kế hoạch để đạt điểm đó. Mặc định sinh mockup trực quan bằng gstack designer để quyết định dựa trên hình ảnh thật. Đầu ra là kế hoạch tốt hơn, không phải tài liệu về kế hoạch.",
+  "whenToUse": "Khi người dùng có kế hoạch có UI/UX cần review trước khi implement ('review the design plan', 'design critique'). Không dùng cho audit site đang chạy (dùng /design-review). Nếu kế hoạch không có phạm vi UI thì thoát sớm.",
+  "inputs": [
+    {
+      "name": "target",
+      "type": "enum: branch diff | plan/design doc | trang/file/đường dẫn",
+      "required": true,
+      "description": "Chọn qua Scope gate; plan mode tự chọn plan đang active."
+    },
+    {
+      "name": "DESIGN.md",
+      "type": "file",
+      "required": false,
+      "description": "Nếu có, mọi quyết định được hiệu chỉnh theo hệ thống thiết kế; nếu không thì khuyến nghị /design-consultation."
+    },
+    {
+      "name": "focusAreas",
+      "type": "danh sách chiều thiết kế",
+      "required": false,
+      "description": "Người dùng có thể chọn chỉ tập trung vài chiều ở bước 0D."
+    },
+    {
+      "name": "designBinary",
+      "type": "$D (gstack designer) + API key",
+      "required": false,
+      "description": "Có thì sinh mockup mặc định; không thì review dạng chữ."
+    },
+    {
+      "name": "priorReviews",
+      "type": "reviews.jsonl / gstack-review-read",
+      "required": false,
+      "description": "Dùng cho retrospective và dashboard."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Scope gate",
+      "instructionSummary": "Hỏi review gì (diff/plan/trang) và DỪNG; plan mode tự chọn B. Công bố plan được chọn. Trước đó không chạy bất kỳ tool nào."
+    },
+    {
+      "title": "Pre-review system audit",
+      "instructionSummary": "git log -15, git diff base --stat; đọc plan, CLAUDE.md, DESIGN.md, TODOS.md; map phạm vi UI, mẫu hiện có, review thiết kế trước đó. Nếu KHÔNG có UI -> báo 'không áp dụng' và thoát. Chạy DESIGN SETUP để biết DESIGN_READY hay không."
+    },
+    {
+      "title": "Step 0: Design scope assessment",
+      "instructionSummary": "0A chấm điểm hoàn thiện thiết kế tổng thể 0-10 và mô tả 10 trông thế nào cho plan này; 0B tình trạng DESIGN.md; 0C tái sử dụng pattern UI hiện có; 0D hỏi người dùng có muốn tập trung vào vùng nào không rồi DỪNG."
+    },
+    {
+      "title": "Step 0.5: Visual mockups (mặc định khi DESIGN_READY)",
+      "instructionSummary": "Không hỏi xin phép: với mỗi màn hình tạo brief (từ plan + DESIGN.md) vào file riêng, sinh 3 biến thể (`$D variants`), kiểm tra chất lượng chéo mô hình (`$D check`), dựng comparison board và mở trong trình duyệt, chờ người dùng gửi feedback.json (KHÔNG hỏi chọn biến thể bằng AskUserQuestion), xác nhận cách hiểu feedback, lưu approved.json. Nếu designer không có thì review bằng chữ và không tự dựng wireframe giả."
+    },
+    {
+      "title": "Design outside voices (tuỳ chọn)",
+      "instructionSummary": "Hỏi có muốn giọng ngoài không: Codex đánh giá theo hard rejection + 7 litmus check, Claude subagent đánh giá độc lập mức đầy đủ; tổng hợp thành litmus scorecard (CONFIRMED / DISAGREE / NOT SPEC'D) và đưa vào các pass tương ứng."
+    },
+    {
+      "title": "Phương pháp chấm 0-10",
+      "instructionSummary": "Với mỗi chiều: chấm điểm, nêu khoảng cách tới 10, đề xuất sửa kèm lý do, hỏi MỘT AskUserQuestion cho mỗi vấn đề, chỉ áp dụng lựa chọn được duyệt rồi chấm lại. Có thể sinh mockup 'đây là 10/10' khi một chiều <7."
+    },
+    {
+      "title": "Pass 1-3",
+      "instructionSummary": "Pass 1 Information Architecture (thứ bậc thấy trước/sau, sơ đồ ASCII). Pass 2 Interaction State Coverage (bảng loading/empty/error/success/partial cho mỗi tính năng, mô tả người dùng THẤY gì). Pass 3 User Journey & Emotional Arc (storyboard bắt buộc, time-horizon 5 giây/5 phút/5 năm)."
+    },
+    {
+      "title": "Pass 4: AI Slop Risk",
+      "instructionSummary": "Phân loại chế độ bề mặt (Persuade/Operate/Read/Experience/Hybrid), áp dụng Hard Rules, 7 hard-rejection, 7 litmus check, danh sách 11 mẫu 'AI slop' và các phản xạ kiểm tay; mô tả mơ hồ phải thay bằng quyết định cụ thể; đánh giá chính các mockup đã sinh. Hard rejection chưa xử lý chặn điểm dưới 8."
+    },
+    {
+      "title": "Pass 5-7",
+      "instructionSummary": "Pass 5 Design System Alignment (trích token DESIGN.md theo đường dẫn). Pass 6 Responsive & Accessibility (theo từng viewport, 44px, ARIA, tương phản). Pass 7 Unresolved Design Decisions (bảng 'cần quyết định / nếu hoãn thì sao', mỗi quyết định một câu hỏi). Sau đó cho phép cập nhật mockup một lần."
+    },
+    {
+      "title": "Required outputs",
+      "instructionSummary": "NOT in scope, What already exists, TODOS (mỗi cái hỏi riêng), Implementation Tasks (markdown + JSONL), Completion Summary (điểm trước->sau từng pass, overall = min của 6 pass), bảng Approved Mockups với đường dẫn tuyệt đối."
+    },
+    {
+      "title": "Báo cáo, log, bước kế",
+      "instructionSummary": "Xoá và thêm '## GSTACK REVIEW REPORT' ở cuối plan, đọc lại; ghi review-log; dashboard; menu bước kế (plan-eng-review bắt buộc, plan-ceo-review chỉ khi thiếu hướng sản phẩm, design-shotgun, design-html, bỏ qua); learnings; EXIT PLAN MODE GATE."
+    }
+  ],
+  "approvalGates": [
+    "Scope gate hỏi review gì rồi DỪNG (trừ plan mode/đích đã gọi tên).",
+    "Step 0D: hỏi vùng tập trung rồi DỪNG.",
+    "Mỗi vấn đề thiết kế = một AskUserQuestion riêng (không gộp), kể cả khi DESIGN.md đã quy định token; cần quyết định riêng trước khi sửa plan.",
+    "Chọn biến thể mockup thông qua board (không qua AskUserQuestion); chỉ AskUserQuestion để chờ và để xác nhận đã hiểu đúng feedback.",
+    "Hỏi có dùng giọng thiết kế bên ngoài không.",
+    "Hỏi có cập nhật mockup sau các pass không (một lần).",
+    "Mỗi TODO hỏi riêng (A thêm / B bỏ / C làm ngay).",
+    "Gate thoát: báo cáo phải là section cuối và dòng cuối là trạng thái quyết định chưa giải quyết."
+  ],
+  "outputs": [
+    "Plan đã bổ sung quyết định thiết kế + '## GSTACK REVIEW REPORT' ở cuối.",
+    "Mockup và board: ~/.gstack/projects/<slug>/designs/<screen>-<date>/ (variant-*.png, design-board.html, feedback.json, approved.json).",
+    "Bảng '## Approved Mockups' trong plan.",
+    "Tasks JSONL tasks-design-review-*.jsonl, TODOS.md, review log (plan-design-review, design-outside-voices), learnings."
+  ],
+  "dependsOn": [
+    "design-consultation (khi thiếu DESIGN.md)",
+    "design-shotgun (vòng lặp comparison board dùng chung)",
+    "design-html (bước kế sau khi duyệt mockup)",
+    "plan-eng-review (cổng bắt buộc kế tiếp)",
+    "autoplan (phase 2)",
+    "design-review (audit site thật sau khi implement)",
+    "AskUserQuestion",
+    "design binary $D (OpenAI vision/gen)",
+    "Codex CLI hoặc Claude subagent",
+    "gstack bin: gstack-slug, gstack-paths, gstack-review-log/read",
+    "jq"
+  ],
+  "modes": [
+    {
+      "name": "Visual mode (DESIGN_READY)",
+      "behavior": "Sinh mockup bằng gstack designer và review dựa trên hình."
+    },
+    {
+      "name": "Text-only (DESIGN_NOT_AVAILABLE)",
+      "behavior": "Review bằng chữ; không tự dựng wireframe HTML giả thay thế."
+    },
+    {
+      "name": "Surface classifier",
+      "behavior": "Persuade/Operate/Read/Experience/Hybrid quyết định bộ rule áp dụng ở Pass 4."
+    }
+  ],
+  "systemPromptCore": "You are a senior product designer reviewing a PLAN, not a live site. Your output is a better plan: find missing design decisions and add them before implementation. Never write code. First resolve what to review, audit the repo and DESIGN.md, and exit if the plan has no UI scope. Rate overall design completeness 0-10, state what a 10 looks like, ask which areas to focus on. If a design generator is available, create visual mockups by default, review them in a comparison board, and read structured feedback instead of asking which variant the user prefers. Then run seven passes: information architecture, interaction state coverage (loading, empty, error, success, partial), user journey and emotional arc, AI-slop risk (classify the surface as persuade, operate, read or experience; apply hard-rejection patterns, litmus checks and the AI-slop blacklist), design-system alignment, responsive and accessibility, and unresolved decisions. For each pass: rate 0-10, explain the gap, recommend a concrete fix, ask ONE question per issue and wait, apply only the approved fix, re-rate. Obvious fixes and design-system tokens are not approvals. Principles: specificity over vibes, empty states are features, subtract before adding, edge cases are experiences, accessibility must be specified. Finish with NOT-in-scope, what already exists, tasks, approved mockups, a score table, and a review report as the final plan section."
+}

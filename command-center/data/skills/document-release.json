@@ -1,0 +1,104 @@
+{
+  "name": "document-release",
+  "group": "docs",
+  "purposeVi": "Kiểm toán và cập nhật tài liệu sau khi ship: đối chiếu diff với README/ARCHITECTURE/CONTRIBUTING/CLAUDE.md, lập bản đồ độ phủ Diataxis, phát hiện sơ đồ kiến trúc lỗi thời, đánh bóng CHANGELOG và dọn TODOS. Chỉ gắn cờ khoảng trống, không tự sinh trang mới.",
+  "whenToUse": "Sau khi commit và trước khi merge ('update the docs', 'sync documentation', 'post-ship docs'); /ship cũng tự gọi bản thu hẹp như subagent ở Bước 14.5.",
+  "inputs": [
+    {
+      "name": "branch diff",
+      "type": "git-state",
+      "required": true,
+      "description": "Diff từ merge-base với nhánh nền; nhánh nền thì hủy (trừ chế độ ship-owned)."
+    },
+    {
+      "name": "doc files",
+      "type": "file-list",
+      "required": false,
+      "description": "Tài liệu liên quan được khám phá theo audit-scope (kể cả lồng nhau)."
+    },
+    {
+      "name": "ship candidate",
+      "type": "json",
+      "required": false,
+      "description": "Ở chế độ ship-owned: base SHA, thay đổi chưa commit, đường dẫn được phép sửa; thiếu thì trả về blocked."
+    },
+    {
+      "name": "SESSION_KIND",
+      "type": "env",
+      "required": false,
+      "description": "spawned khi chạy như subagent: tự chọn phương án khuyến nghị."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Audit-scope",
+      "instructionSummary": "Đọc section audit-scope: chọn đầu vào phát hành, khám phá tài liệu liên quan."
+    },
+    {
+      "title": "1 Pre-flight + phân tích diff",
+      "instructionSummary": "Tính DOC_DIFF_BASE, hủy nếu ở nhánh nền, lấy stat/log/name-only, phân loại tính năng mới / hành vi đổi / bị xóa / hạ tầng."
+    },
+    {
+      "title": "1.5 Bản đồ độ phủ",
+      "instructionSummary": "Trích bề mặt công khai đổi, đánh giá reference/how-to/tutorial/explanation cho từng mục; zero coverage = lỗ hổng nghiêm trọng; phát hiện sơ đồ kiến trúc trôi dạt (chỉ khuyến nghị)."
+    },
+    {
+      "title": "2 Kiểm từng file tài liệu",
+      "instructionSummary": "Đọc đầy đủ rồi đối chiếu sự kiện với diff."
+    },
+    {
+      "title": "3 Áp dụng cập nhật tự động",
+      "instructionSummary": "Sửa đường dẫn, số đếm, bảng, tham chiếu chéo, không hỏi."
+    },
+    {
+      "title": "4 Hỏi về thay đổi rủi ro",
+      "instructionSummary": "Câu chuyện, triết lý, bảo mật, xóa, viết lại lớn mới hỏi người dùng."
+    },
+    {
+      "title": "5 Đánh bóng giọng CHANGELOG",
+      "instructionSummary": "Chỉ chỉnh câu chữ bằng Edit với old_string chính xác, giữ nguyên mọi nội dung; không dùng Write lên CHANGELOG."
+    },
+    {
+      "title": "6 Nhất quán chéo + khả năng khám phá",
+      "instructionSummary": "Mọi tài liệu phải truy cập được từ README hoặc CLAUDE.md."
+    },
+    {
+      "title": "7 Dọn TODOS.md",
+      "instructionSummary": "Đánh dấu hoàn thành mục đã chứng minh; mục mới phải hỏi."
+    },
+    {
+      "title": "8 Câu hỏi bump VERSION",
+      "instructionSummary": "Luôn hỏi trước khi đổi VERSION, kể cả khi đã bump (kiểm xem có bao phủ hết phạm vi không); review Codex tài liệu mặc định bật."
+    },
+    {
+      "title": "9 Commit + đầu ra",
+      "instructionSummary": "Commit thay đổi tài liệu, xuất báo cáo nợ tài liệu (documentation_section ở chế độ ship-owned); gợi ý /document-generate cho lỗ hổng."
+    }
+  ],
+  "approvalGates": [
+    "Thay đổi tài liệu rủi ro/chủ quan (narrative, triết lý, bảo mật, xóa, viết lại lớn)",
+    "Quyết định bump VERSION (luôn hỏi, không bao giờ im lặng)",
+    "Mục TODOS mới",
+    "Mâu thuẫn chéo mang tính tường thuật (không phải sự kiện)",
+    "Ở chế độ spawned: tự chọn khuyến nghị nhưng bỏ qua mọi đề xuất viết lại CHANGELOG hoặc đổi VERSION"
+  ],
+  "outputs": [
+    "Tài liệu đã cập nhật + commit docs",
+    "Bản đồ độ phủ Diataxis và báo cáo nợ tài liệu",
+    "Danh sách sơ đồ kiến trúc nghi lỗi thời (chỉ báo)",
+    "JSON kết quả audit cho /ship (ship-owned): trạng thái, băm file, trường blocked"
+  ],
+  "dependsOn": [
+    "ship (bên gọi, Bước 14.5)",
+    "document-generate (đề xuất để lấp lỗ hổng)",
+    "codex (review tài liệu mặc định bật)",
+    "sections/audit-scope.md, sections/release-body.md"
+  ],
+  "modes": [
+    "standalone",
+    "ship-owned (subagent spawned, quyền hạn chế, không Git/PR/VERSION/CHANGELOG)",
+    "read-only"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "You audit and update project documentation after code has shipped. First resolve the merge base and refuse to run on the base branch (except when a ship workflow owns the audit). Read the diff and classify changes into new features, changed behavior, removed functionality and infrastructure. Build a coverage map for every changed public surface item across reference, how-to, tutorial and explanation docs; items with no coverage are critical gaps, reference-only items are common gaps. Report gaps and stale architecture diagrams as debt but never auto-generate pages or edit diagrams; suggest the documentation-generation skill instead. Read each doc file fully before editing, make factual fixes directly (paths, counts, table rows, cross-references), and ask only about risky or subjective changes such as narrative, philosophy, security, removals or large rewrites. Polish the changelog wording only, with exact-match edits, and never overwrite, delete or regenerate entries. Never change the version without asking, even if it was already bumped. Ensure every doc is reachable from the README or the instructions file. Mark completed TODOs. Summarise each edit in one line. When running as a restricted subagent, auto-choose the recommended option, skip any changelog rewrite or version change, and return a structured result or a blocked status when inputs are missing."
+}

@@ -1,0 +1,62 @@
+{
+  "name": "landing-report",
+  "group": "analytics",
+  "purposeVi": "Bảng điều khiển chỉ đọc cho hàng đợi VERSION: các PR đang chiếm slot nào, worktree Conductor anh em nào sắp ship, và /ship tiếp theo sẽ nhận slot nào ở từng mức bump. Giống 'gh pr list' nhưng cho số phiên bản.",
+  "whenToUse": "Khi chạy nhiều workspace song song và muốn biết 'landing report', 'show open PRs', 'which version do I claim next'. An toàn trong plan mode.",
+  "inputs": [
+    {
+      "name": "base branch",
+      "type": "string",
+      "required": false,
+      "description": "Tự dò: base của PR hiện tại, nhánh mặc định repo, hoặc main."
+    },
+    {
+      "name": "VERSION",
+      "type": "file",
+      "required": false,
+      "description": "VERSION của nhánh và của origin/<base>."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Phát hiện nhánh nền",
+      "instructionSummary": "gh pr view / gh repo view / main."
+    },
+    {
+      "title": "2 Đọc trạng thái hiện tại",
+      "instructionSummary": "VERSION ở nhánh và ở origin/<base> sau git fetch."
+    },
+    {
+      "title": "3 Truy vấn hàng đợi",
+      "instructionSummary": "Gọi gstack-next-version một lần cho từng mức micro/patch/minor/major, lưu JSON tạm."
+    },
+    {
+      "title": "4 Dựng dashboard",
+      "instructionSummary": "Hộp tiêu đề repo/base/host/trạng thái; danh sách PR chiếm slot (đánh dấu va chạm); worktree anh em (active = VERSION vượt base, commit <24h, chưa có PR); slot mà /ship sẽ nhận ở mỗi mức; nếu offline in khối rút gọn."
+    },
+    {
+      "title": "5 Gợi ý hành động",
+      "instructionSummary": "Chỉ một trong ba: va chạm hai PR / sibling active vượt nhánh bạn / hàng đợi sạch."
+    }
+  ],
+  "approvalGates": [
+    "Không có - hoàn toàn chỉ đọc"
+  ],
+  "outputs": [
+    "Bảng GSTACK LANDING REPORT trong hội thoại",
+    "Một gợi ý hành động duy nhất",
+    "Tệp tạm /tmp/landing-<level>.json (không ghi trạng thái repo)"
+  ],
+  "dependsOn": [
+    "bin/gstack-next-version (bun)",
+    "gh/glab",
+    "jq"
+  ],
+  "modes": [
+    "online",
+    "offline (queue-awareness unavailable)",
+    "plan-mode safe"
+  ],
+  "riskLevel": "read",
+  "systemPromptCore": "You render a read-only dashboard of the version queue for a repository. Determine the base branch from the current pull request, falling back to the repository default and then main. Read the VERSION on the branch and on the freshly fetched remote base. Query the next-version utility once for each bump level (micro, patch, minor, major) and use the patch result as canonical for the queue and sibling worktrees. Render a single table: repository, base and version, host, online or offline status; open pull requests that claim versions, flagging any two that collide; sibling workspace worktrees with path, branch, version, last commit age and PR, marking as active those whose version is ahead of base, whose last commit is under a day old and which have no open PR; and the version slot a ship would claim at each bump level. If the query failed or the host is unknown, print a short offline block with the reason and note that collisions cannot be detected. Finish with exactly one suggestion: warn about colliding PRs, warn that an active sibling may outrank the user's version and force a rebump, or state that the queue is clean. Never write files other than temporary query output, never mutate git or network state."
+}

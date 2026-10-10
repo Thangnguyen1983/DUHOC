@@ -1,0 +1,54 @@
+{
+  "name": "careful",
+  "group": "safety",
+  "purposeVi": "Chế độ cảnh báo lệnh phá hủy: một hook PreToolUse kiểm mọi lệnh Bash/PowerShell và hỏi xác nhận trước rm -r, DROP/TRUNCATE, force-push, git reset --hard, kubectl delete, docker prune. Hai dạng thảm họa bị từ chối cứng. Chỉ có hiệu lực trong phiên hiện tại.",
+  "whenToUse": "Khi làm việc với production, debug hệ thống sống hoặc môi trường dùng chung: 'be careful', 'safety mode', 'prod mode'.",
+  "inputs": [
+    {
+      "name": "careful-patterns.txt",
+      "type": "file",
+      "required": false,
+      "description": "Regex ERE bổ sung (mỗi dòng một mẫu) ở ~/.gstack/ hoặc ~/.gstack/projects/<slug>/; chỉ được THÊM, không được nới lỏng mẫu gốc."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Kích hoạt",
+      "instructionSummary": "Gọi skill: ghi một dòng analytics; hook trong frontmatter được đăng ký cho phiên (matcher Bash và PowerShell)."
+    },
+    {
+      "title": "Kiểm từng lệnh",
+      "instructionSummary": "check-careful.sh đọc JSON stdin, trích lệnh bằng parser JSON thật, kiểm theo tầng: ngụy trang shell -> HIGH deny -> ngoại lệ an toàn -> MEDIUM ask -> mẫu dự án."
+    },
+    {
+      "title": "Ra quyết định",
+      "instructionSummary": "Trả hookSpecificOutput với permissionDecision ask (có lý do) hoặc deny, hoặc {} nếu cho qua; người dùng có thể ghi đè mọi cảnh báo MEDIUM."
+    },
+    {
+      "title": "Kết thúc",
+      "instructionSummary": "Hết hội thoại là hết hiệu lực (hook theo phiên)."
+    }
+  ],
+  "approvalGates": [
+    "MEDIUM: mỗi lệnh khớp mẫu phá hủy cần người dùng duyệt trong hộp thoại quyền (ask)",
+    "HIGH: rm -r của /, ~, $HOME và force-push lên nhánh mặc định bị DENY cứng; lối thoát là kết thúc phiên /careful",
+    "Hook thiếu helper hoặc payload không phân tích được: hỏi (fail-ask)"
+  ],
+  "outputs": [
+    "Quyết định ask/deny/allow JSON cho từng lệnh",
+    "Dòng log hook_fire (chỉ tên mẫu, không ghi nội dung lệnh) vào analytics"
+  ],
+  "dependsOn": [
+    "careful/bin/check-careful.sh",
+    "careful/bin/hook-extract.sh",
+    "bin/gstack-paths",
+    "Claude Code PreToolUse hooks"
+  ],
+  "modes": [
+    "session-scoped (frontmatter hooks)",
+    "HIGH tier (deny)",
+    "MEDIUM tier (ask)"
+  ],
+  "riskLevel": "read",
+  "systemPromptCore": "Safety mode is active for this session. Before every shell command (Bash or PowerShell) is executed, a pre-tool hook inspects the command string and may stop it. Behave accordingly: expect a warning and ask the user before proceeding whenever a command would recursively delete files, drop or truncate database objects, force-push, hard-reset or discard working-tree changes, delete Kubernetes resources, or force-remove or prune containers; on Windows also recursive or forced removal, volume formatting, disk clearing and content clearing, plus encoded or dynamically built commands that cannot be inspected. Two catastrophic shapes are denied outright, not asked: a recursive delete aimed at the filesystem root or the home directory, and a force-push to the repository's default branch, when written as a simple command; the only way past is ending the careful session. Deleting standard build artifact folders such as node_modules, dist or caches is allowed without warning. Shell obfuscation such as IFS splitting or decoding to a shell triggers a question. Never try to evade the check by rewording a destructive command. This is an advisory string-matching guard, not a security boundary, so prefer non-destructive alternatives and explain what a flagged command would do before asking."
+}

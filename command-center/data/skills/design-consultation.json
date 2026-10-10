@@ -1,0 +1,127 @@
+{
+  "name": "design-consultation",
+  "group": "design",
+  "purposeVi": "Tư vấn thiết kế: hiểu sản phẩm, (tuỳ chọn) nghiên cứu cảnh quan thiết kế, đề xuất một hệ thống thiết kế hoàn chỉnh (thẩm mỹ, typography, màu, layout, spacing, chuyển động) có lý do và rủi ro có chủ đích, tạo bản xem trước (mockup AI hoặc trang HTML), rồi ghi DESIGN.md làm nguồn sự thật thiết kế cho dự án. Với site đã có thì dùng /plan-design-review để suy ra hệ thống.",
+  "whenToUse": "Khi người dùng cần 'design system', 'brand guidelines', 'create DESIGN.md', hoặc bắt đầu UI của dự án mới mà chưa có hệ thống thiết kế hay DESIGN.md.",
+  "inputs": [
+    {
+      "name": "existingDesignMd",
+      "type": "file DESIGN.md / design-system.md",
+      "required": false,
+      "description": "Nếu có: chọn update / start fresh / cancel."
+    },
+    {
+      "name": "productContext",
+      "type": "PRODUCT.md, README, package.json, cấu trúc src/, output office-hours",
+      "required": false,
+      "description": "Tự thu thập; PRODUCT.md được coi là câu trả lời có sẵn, không hỏi lại."
+    },
+    {
+      "name": "researchPreference",
+      "type": "boolean (A nghiên cứu / B chỉ dùng kiến thức thiết kế)",
+      "required": true,
+      "description": "Trả lời ở Q1."
+    },
+    {
+      "name": "memorableThing",
+      "type": "một câu",
+      "required": true,
+      "description": "Điều bạn muốn người ta nhớ sau lần đầu thấy sản phẩm; mọi quyết định phục vụ nó."
+    },
+    {
+      "name": "tasteProfile",
+      "type": "taste-profile.json",
+      "required": false,
+      "description": "Gu từ các phiên trước, chỉ là sở thích không phải ràng buộc."
+    },
+    {
+      "name": "browserTools",
+      "type": "Aside hoặc $B; WebSearch",
+      "required": false,
+      "description": "Cho nghiên cứu thị giác; thiếu thì suy giảm uyển chuyển."
+    },
+    {
+      "name": "designBinary",
+      "type": "$D (gstack designer)",
+      "required": false,
+      "description": "DESIGN_READY thì dùng mockup AI (Path A), nếu không dùng HTML preview (Path B)."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Phase 0: Pre-checks",
+      "instructionSummary": "Nếu có DESIGN.md/design-system.md: hỏi update / start fresh / cancel (DESIGN.md là chuẩn). Với update, chạy kiểm tra định dạng (spec / legacy / unknown / missing). Thu thập bối cảnh từ PRODUCT.md, README, package.json, src/, output office-hours. Không rõ sản phẩm thì gợi ý /office-hours. Kiểm tra Aside/$B và gstack designer. Mọi thao tác ghi chờ tới Q-final."
+    },
+    {
+      "title": "Phase 1: Product context (Q1)",
+      "instructionSummary": "Một AskUserQuestion xác nhận bối cảnh đã điền sẵn và đồng thời quyết định có nghiên cứu hay không (A nghiên cứu / B kiến thức thiết kế / C sửa bối cảnh); nói rõ đây là hội thoại không phải biểu mẫu. Sau đó hỏi riêng câu 'memorable thing'. Đọc taste profile nếu có và tập hợp product brief."
+    },
+    {
+      "title": "Phase 2: Nghiên cứu (nếu đồng ý)",
+      "instructionSummary": "Tìm 5-10 sản phẩm cùng lĩnh vực (Aside hoặc WebSearch); XIN XÁC NHẬN danh sách URL trước khi mở bất kỳ trang nào (chỉ đọc, bỏ qua trang đòi đăng nhập); đánh giá font/palette/layout/mật độ; tổng hợp 3 tầng (phổ biến / xu hướng / nguyên lý đầu tiên) và nêu EUREKA nếu có. Không có công cụ thì nói rõ, không giả làm quan sát."
+    },
+    {
+      "title": "Phase 3: Đề xuất hoàn chỉnh",
+      "instructionSummary": "Tự soạn hướng riêng (aesthetic, decoration, layout, màu, typography theo vai trò, spacing, motion, 2 rủi ro có chủ đích) trước khi nhờ giọng ngoài. Áp dụng quy trình chọn font (đặt tên thế giới của người đọc, shortlist theo vai trò, loại danh sách cấm/quá dùng, XÁC MINH tên/giấy phép/URL trên Google Fonts/Fontshare), chống hội tụ, danh sách anti-slop. Hỏi có dùng giọng thiết kế bên ngoài (Codex + Claude subagent, cùng brief nhưng không lộ bản nháp của bạn); so sánh, rồi Q2 trình đề xuất đầy đủ với SAFE CHOICES và RISKS, lựa chọn A tiếp tục / B chỉnh / C đổi rủi ro / D làm lại / E bỏ preview."
+    },
+    {
+      "title": "Phase 4: Drill-down (nếu yêu cầu chỉnh)",
+      "instructionSummary": "Mỗi lần một câu: font (3-5 ứng viên đã xác minh), màu (2-3 palette), thẩm mỹ, layout/spacing/motion; kiểm tra lại font và độ nhất quán rồi hỏi Q2 lại."
+    },
+    {
+      "title": "Phase 5: Preview",
+      "instructionSummary": "Path A (DESIGN_READY): sinh 3 biến thể mockup trên màn hình sản phẩm thật, kiểm tra chất lượng, tự cổng ('nhà thiết kế có ngại ký tên không?'), dựng comparison board và chờ feedback; xác nhận cách hiểu feedback, lưu approved.json, trích token bằng $D extract trong thư mục tạm ngoài git. Path B: HTML preview tự chứa (font specimen, palette, mockup thực tế, dark/light toggle). Có thể bỏ preview."
+    },
+    {
+      "title": "Phase 6: Q-final và ghi DESIGN.md",
+      "instructionSummary": "Chuẩn bị nội dung DESIGN.md đầy đủ (front matter YAML 5 nhóm token + các section Overview, Colors, Typography, Layout, Elevation, Shapes, Components, Do's/Don'ts, Motion, Decisions Log), nguồn token, và đoạn CLAUDE.md sẽ thêm; hỏi Approve / Revise / Start over. Chỉ Approve mới ghi (plan mode thì chỉ ghi '## Proposed DESIGN.md' trong plan). Chạy kiểm tra định dạng sau khi ghi, rồi gợi ý /design-html nếu có layout màn hình."
+    }
+  ],
+  "approvalGates": [
+    "Update / start fresh / cancel khi đã có DESIGN.md.",
+    "Q1 (xác nhận bối cảnh + có nghiên cứu hay không) và câu 'memorable thing' hỏi riêng.",
+    "Xác nhận danh sách URL trước khi mở trang đối thủ trong trình duyệt.",
+    "Opt-in dùng giọng thiết kế bên ngoài (Codex + subagent).",
+    "Q2: đề xuất đầy đủ phải được người dùng phê duyệt hoặc chỉnh (A-E); mọi chỉnh sửa phải kiểm tra lại font và tính nhất quán.",
+    "Xác nhận feedback của comparison board trước khi lưu approved.json.",
+    "Q-final: Approve mới được ghi DESIGN.md và CLAUDE.md; mọi thay đổi token/font/hướng sau đó huỷ phê duyệt.",
+    "Hỏi chuyển định dạng DESIGN.md legacy (Convert / Keep legacy / Start fresh)."
+  ],
+  "outputs": [
+    "DESIGN.md ở gốc repo (định dạng mở google-labs-code/design.md, marker `# gstack: design-md-format=spec`).",
+    "Đoạn '## Design System' trong CLAUDE.md.",
+    "Mockup và board: ~/.gstack/projects/<slug>/designs/design-system-<date>/ (variant-*.png, design-board.html, approved.json) hoặc /tmp/design-consultation-preview-*.html.",
+    "Backup của DESIGN.md cũ khi Start fresh; review-log design-outside-voices; eureka log nếu có."
+  ],
+  "dependsOn": [
+    "office-hours (ngữ cảnh sản phẩm)",
+    "plan-design-review (cho site đã tồn tại)",
+    "design-shotgun (vòng lặp board dùng chung)",
+    "design-html (bước kế)",
+    "design-review",
+    "AskUserQuestion",
+    "Aside browser hoặc gstack browse ($B); WebSearch",
+    "design binary $D",
+    "Codex CLI + Claude subagent (tuỳ chọn)",
+    "gstack bin: gstack-design-md.ts (check/convert/mark/tokens), gstack-review-log, gstack-slug, gstack-paths"
+  ],
+  "modes": [
+    {
+      "name": "Update",
+      "behavior": "Giữ quyết định cũ làm ràng buộc, chỉ đổi phần được yêu cầu."
+    },
+    {
+      "name": "Start fresh",
+      "behavior": "Bỏ lựa chọn thị giác cũ (giữ ràng buộc người dùng muốn), sao lưu trước khi thay."
+    },
+    {
+      "name": "Path A / Path B",
+      "behavior": "Mockup AI khi có designer, HTML preview khi không."
+    },
+    {
+      "name": "Plan mode",
+      "behavior": "Chỉ ghi '## Proposed DESIGN.md' vào plan, hoãn ghi file thật khi implement."
+    }
+  ],
+  "systemPromptCore": "You are a senior product designer building a complete design system through conversation, not a rigid form. First check for an existing DESIGN.md and ask whether to update, start fresh or cancel; read the codebase, README and any product or office-hours notes so you do not re-ask known facts. Ask one combined question that confirms product context and decides whether to research competitors, then ask the single thing a visitor should remember; every decision must serve that answer. If research is approved, list candidate sites and get the user's confirmed URLs before opening any page; if tools are unavailable say so rather than faking observations. Draft your own proposal first: aesthetic direction, decoration, layout, color strategy, role-based typography, spacing, motion, plus at least two deliberate risks with benefit and cost; separate safe choices from risks. Choose fonts by procedure: define the audience's world, shortlist per role, exclude banned and overused display faces, and verify name, license and loading source before adopting. Avoid AI-slop patterns and the three predictable looks; decide light or dark from the use scene. Optionally gather independent proposals from outside voices without revealing your draft. Show previews (generated mockups with a comparison board, or a self-contained HTML page). Before writing anything, show the full DESIGN.md and get explicit approval; honor the user's final choice after stating coherence concerns once."
+}

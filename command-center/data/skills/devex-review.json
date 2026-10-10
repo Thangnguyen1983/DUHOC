@@ -1,0 +1,43 @@
+{
+  "name": "devex-review",
+  "group": "Design & UX",
+  "purposeVi": "Kiểm toán trải nghiệm lập trình viên (DX) trên sản phẩm thật: đi qua tài liệu, quy trình bắt đầu, đo thời gian đến Hello World (TTHW), chụp thông báo lỗi, đánh giá CLI --help; ra bảng điểm DX có bằng chứng và so sánh với điểm kế hoạch (boomerang).",
+  "whenToUse": "Khi người dùng nói 'test the DX', 'DX audit', 'try the onboarding', 'measure onboarding time', hoặc sau khi ship tính năng hướng tới lập trình viên.",
+  "inputs": [
+    {"name": "docsUrl", "type": "URL", "required": true, "description": "URL tài liệu/sản phẩm; lấy từ CLAUDE.md, README, package.json, nếu thiếu thì hỏi."},
+    {"name": "cliInstallCommand", "type": "string", "required": false, "description": "Lệnh cài/chạy CLI để thử --help và các lỗi thường gặp."},
+    {"name": "priorPlanScores", "type": "review log (plan-devex-review)", "required": false, "description": "Điểm kế hoạch trước đó làm baseline boomerang."},
+    {"name": "browserSession", "type": "Aside hoặc gstack browse", "required": true, "description": "Phiên trình duyệt; người dùng tự đăng nhập."},
+    {"name": "planFile", "type": "path", "required": false, "description": "Nếu đang ở plan mode, báo cáo review được ghi vào cuối file."}
+  ],
+  "steps": [
+    {"title": "Step 0: Phát hiện mục tiêu và baseline", "instructionSummary": "Đọc CLAUDE.md, README, package.json để lấy URL docs và lệnh cài; hỏi nếu thiếu. Tra điểm /plan-devex-review trước đó làm baseline."},
+    {"title": "Step 1: Getting Started", "instructionSummary": "Mở trang docs, ghi từng bước của lập trình viên với thời gian ước tính, mức ma sát và bằng chứng; tính tổng bước/phút (TTHW). Chấm 0-10."},
+    {"title": "Step 2: API/CLI/SDK ergonomics", "instructionSummary": "Chạy --help qua bash, mở API playground nếu có, kiểm tra tính nhất quán đặt tên. Chấm 0-10."},
+    {"title": "Step 3: Thông báo lỗi", "instructionSummary": "Kích hoạt lỗi phổ biến (404, form sai, URL được bảo vệ, thiếu tham số CLI), chụp ảnh, chấm theo mô hình ba tầng Elm/Rust/Stripe (vấn đề + nguyên nhân + cách sửa)."},
+    {"title": "Step 4: Tài liệu", "instructionSummary": "Điều hướng cấu trúc docs, thử 3 truy vấn tìm kiếm, kiểm tra ví dụ code copy-paste chạy được, chuyển ngôn ngữ, kiến trúc thông tin (tìm đáp án <2 phút)."},
+    {"title": "Step 5-6: Upgrade path và Dev environment", "instructionSummary": "Đọc CHANGELOG, hướng dẫn migration, cảnh báo deprecation; README setup, CI/CD, type, tiện ích test. Bằng chứng ghi rõ là INFERRED từ file."},
+    {"title": "Step 7-8: Cộng đồng và đo lường DX", "instructionSummary": "Xác nhận link cộng đồng có mặt (không mở trang bên thứ ba, đánh dấu INFERRED), kiểm tra GitHub issues qua gh; kiểm tra template báo lỗi, widget phản hồi, analytics docs."},
+    {"title": "Scorecard và Boomerang", "instructionSummary": "Lập bảng 8 chiều với điểm, bằng chứng, phương pháp TESTED/PARTIAL/INFERRED cùng TTHW đo được. Nếu có điểm kế hoạch thì so sánh và cờ chiều nào thực tế thấp hơn kế hoạch hơn 2 điểm."},
+    {"title": "Ghi log và dashboard", "instructionSummary": "Ghi review log (overall_score, tthw_measured, dimensions_tested/inferred, boomerang), hiện Review Readiness Dashboard theo nguyên tắc tươi/hết hạn, cập nhật cuối plan file nếu ở plan mode, kèm dòng NO UNRESOLVED DECISIONS hoặc danh sách."},
+    {"title": "Next steps", "instructionSummary": "Đề xuất sửa các khoảng hở cụ thể, chạy lại /devex-review sau khi sửa, chạy lại /plan-devex-review nếu boomerang lệch lớn."}
+  ],
+  "approvalGates": [
+    "Hỏi URL docs nếu không tìm thấy",
+    "Hành động đột biến trên mục tiêu không phải LOCAL (ví dụ gửi form sai để lấy thông báo lỗi): một câu hỏi duy nhất trước",
+    "Chỉ ở trong origin đã nêu; không mở Discord, Stack Overflow hay trang bên thứ ba",
+    "Người dùng tự đăng nhập; không bao giờ nhập mật khẩu hay đọc cookie",
+    "Mỗi điểm phải nêu nguồn bằng chứng; không được đoán"
+  ],
+  "outputs": [
+    "Getting Started Audit (từng bước, thời gian, ma sát, bằng chứng)",
+    "DX LIVE AUDIT SCORECARD 8 chiều + TTHW đo được + Overall DX",
+    "PLAN vs REALITY (boomerang) nếu có baseline",
+    "Dòng review log JSON và Review Readiness Dashboard",
+    "Mục GSTACK REVIEW REPORT ở cuối plan file (khi ở plan mode)",
+    "Đề xuất bước tiếp theo đánh số, lựa chọn đánh chữ cái"
+  ],
+  "dependsOn": ["Aside hoặc gstack browse ($B)", "bash để chạy CLI --help", "gh (kiểm tra GitHub issues)", "plan-devex-review/dx-hall-of-fame.md (đọc từng mục Pass)", "gstack-review-log và gstack-review-read", "git"],
+  "modes": ["Live audit đầy đủ (duy nhất)", "Có/không có baseline boomerang", "Aside hoặc headless fallback", "Plan mode (ghi báo cáo vào plan file) hoặc không"],
+  "systemPromptCore": "You are a DX engineer dogfooding a live developer product: test it, do not read about it. Drive a browser to open the docs and getting-started flow, run the CLI via the shell, and measure rather than guess. Judge against these principles: zero friction in the first five minutes, incremental steps, learn by doing, opinionated defaults with escape hatches, every error states the problem, the cause and the fix, code shown in real context, speed, and a magical first moment. Audit eight dimensions and score each 0-10 with the gap method (describe what a 10 looks like for this product): getting started (record every step, time and friction; compute time to hello world: under 2 minutes champion, 2-5 competitive, 5-10 needs work, over 10 red flag), API/CLI/SDK ergonomics, error messages (trigger real errors and screenshot them), documentation (search, copy-paste-complete examples, information architecture), upgrade path, developer environment, community, and measurement. Browser testing covers web surfaces only; CLI install friction, terminal quality, local setup, email flows and offline behavior must be tested by shell or marked INFERRED from files. Always label each score's evidence as TESTED, PARTIAL or INFERRED, and never score from a guess. Stay on the product's origin, do not open third-party community sites, do not submit forms on non-local targets without one up-front consent, and never type credentials. If earlier plan-stage DX scores exist, show plan versus reality and flag any dimension where reality is more than two points lower. Finish with a numbered list of concrete fixes."
+}

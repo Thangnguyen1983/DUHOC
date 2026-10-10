@@ -1,0 +1,41 @@
+{
+  "name": "sync-gbrain",
+  "group": "memory",
+  "purposeVi": "Giữ gbrain luôn cập nhật theo mã nguồn của repo (chỉ mục mã, ingest bộ nhớ, đẩy brain-sync) và làm mới hướng dẫn tìm kiếm trong CLAUDE.md; chạy lại được, idempotent.",
+  "whenToUse": [
+    "'sync gbrain', 'refresh gbrain', 're-index this repo', 'gbrain search isn't finding things'",
+    "Sau khi sửa nhiều mã hoặc thêm worktree mới"
+  ],
+  "inputs": [
+    "cờ: --full --dream --no-dream --code-only --dry-run --no-memory --no-brain-sync --sources --quiet --refresh-cache --audit",
+    "trạng thái /setup-gbrain đã chạy"
+  ],
+  "steps": [
+    "Thăm dò trạng thái và cổng chính sách tin cậy (đặt personal tự động cho engine cục bộ); chính sách repo deny thì dừng",
+    "Kiểm tra trước engine cục bộ: ok/timeout/thin-client đi tiếp; engine-locked, no-cli, missing-config, db-unreachable, broken-* thì dừng với thông báo khắc phục",
+    "Cổng đồng ý transcript (off/recent/all/new, theo repo) hỏi một lần khi tương tác",
+    "Chạy bộ điều phối ba giai đoạn: code → memory → brain-sync (mỗi giai đoạn lỗi không chặn giai đoạn sau; khóa chống chạy đồng thời)",
+    "Kiểm tra sức khỏe chỉ mục: nếu chứng minh được 0 trang thì đề nghị --full; số trang không rõ là cảnh báo chứ không phải 0",
+    "Kiểm tra đồ thị gọi; đề nghị --dream nếu cần và schema pack hỗ trợ",
+    "Làm mới khối '## GBrain Search Guidance' trong CLAUDE.md bằng ghi nguyên tử; hiển thị khối kết quả"
+  ],
+  "approvalGates": [
+    "Chỉ chuyển tiếp cờ nằm trong danh sách cho phép; giá trị lạ bị từ chối, không chạy",
+    "Reindex đầy đủ (~25-35 phút) hỏi trước khi chạy",
+    "Ingest transcript cần đồng ý rõ; phiên spawned/headless không hỏi và bỏ qua",
+    "Chính sách tin cậy endpoint từ xa chưa đặt phải hỏi trước khi chạy"
+  ],
+  "outputs": [
+    "Trạng thái từng giai đoạn và khối verdict",
+    "CLAUDE.md được cập nhật khối hướng dẫn tìm kiếm",
+    "Trạng thái lưu ở ~/.gstack/.gbrain-sync-state.json"
+  ],
+  "dependsOn": [
+    "setup-gbrain",
+    "bin/gstack-gbrain-sync.ts",
+    "gbrain >= 0.20 (code-def/refs/callers/callees)",
+    "gstack-config"
+  ],
+  "riskLevel": "medium",
+  "systemPromptCore": "You keep an agent's knowledge base current against the repository and teach the agent when to prefer semantic search over text grep. Confirm onboarding already happened; if the repository's trust policy is deny, stop. Run a preflight on the local engine and branch on its status: healthy, slow or thin-client states proceed, while locked, missing, unreachable or broken engines stop with an actionable fix; never suggest moving config aside for a network error. Ask once about transcript ingestion with counts and destination, store the answer, and in non-interactive sessions skip it silently. Pass only whitelisted flags to the orchestrator and reject anything else. The orchestrator runs code, memory and brain-sync stages independently, tolerating one stage failing, guarded by a lock and atomic state writes. Afterwards verify the index: treat an unknown page count as a warning, and only a proven zero justifies offering a full reindex, which you must ask before starting. Offer call-graph building when the schema supports it. Finally refresh the search-guidance block in project instructions through an atomic write and show a clear verdict of what ran, skipped or failed."
+}

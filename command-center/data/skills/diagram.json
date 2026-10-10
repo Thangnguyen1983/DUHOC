@@ -1,0 +1,39 @@
+{
+  "name": "diagram",
+  "group": "rendering",
+  "purposeVi": "Chuyển mô tả bằng lời (hoặc mã mermaid) thành bộ ba sơ đồ: nguồn .mmd, tệp .excalidraw có thể chỉnh sửa, và SVG + PNG; chạy hoàn toàn offline.",
+  "whenToUse": [
+    "'make a diagram', 'draw the architecture', 'create a flowchart', 'visualize this flow'",
+    "Cần sơ đồ để nhúng vào tài liệu/README"
+  ],
+  "inputs": [
+    "mô tả sơ đồ bằng ngôn ngữ tự nhiên hoặc mã mermaid",
+    "thư mục đầu ra (mặc định ./diagrams/ hoặc /tmp/gstack-diagrams/)"
+  ],
+  "steps": [
+    "Viết mermaid: ưu tiên flowchart/sequence để có excalidraw chỉnh từng hộp; 5-15 nút, chi tiết đặt ở nhãn cạnh; quá lớn thì tách",
+    "Đặt gói render vào vùng staging riêng (đánh địa chỉ theo sha) và ghi nhớ đường dẫn; thiếu gói thì dừng, không dùng CDN",
+    "Ghi .mmd trước, gửi nguồn vào trang qua base64 (không ghép vào template literal), một lệnh render cho đủ ba eval: SVG, PNG 1950px, .excalidraw",
+    "Đọc kết quả: ERROR là lỗi parse mermaid (sửa .mmd và chạy lại); PAGE_ERRORS có 'Error processing Mermaid diagram' nghĩa là excalidraw chỉ là một phần tử ảnh",
+    "Đọc PNG để người dùng thấy, liệt kê bộ ba, ghi chú cách chỉnh trên excalidraw.com và render lại từ bản đã sửa",
+    "Với sơ đồ cho PDF: nhúng .mmd thay vì PNG"
+  ],
+  "approvalGates": [
+    "Không có cổng phê duyệt đặc biệt; dừng với trạng thái BLOCKED nếu thiếu gói hoặc không có trình duyệt, không cài đặt hay thay bằng CDN"
+  ],
+  "outputs": [
+    "<slug>.mmd",
+    "<slug>.excalidraw",
+    "<slug>.svg",
+    "<slug>.png",
+    "Trạng thái DONE hoặc BLOCKED"
+  ],
+  "dependsOn": [
+    "lib/diagram-render (gói offline)",
+    "bin/gstack-render.ts",
+    "Aside hoặc daemon browse",
+    "make-pdf (đích nhúng)"
+  ],
+  "riskLevel": "low",
+  "systemPromptCore": "You convert an English description into an editable diagram triplet: the mermaid source, an editable scene file, and rendered vector plus raster images, all offline. Author the mermaid yourself: prefer left-to-right flowcharts for pipelines and top-down for hierarchies, keep labels short with detail on edges, aim for five to fifteen nodes and split bigger asks into several diagrams, saying why. Flowcharts and sequence diagrams become fully editable scenes; other types render fine but export as a single image element, which you must tell the user. Stage the self-contained render bundle in a private, content-addressed directory and never fall back to a CDN. Write the source file first, then ship it into the page as base64 to avoid escaping corruption, and produce all three outputs in one render call. A hard error means a parse problem: show it, fix the source and retry rather than hand over a broken file. Never deliver a source file without having rendered it. Show the PNG inline, list the three paths, and explain how to edit the scene and re-render. Report DONE or BLOCKED."
+}

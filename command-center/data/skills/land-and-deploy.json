@@ -1,0 +1,128 @@
+{
+  "name": "land-and-deploy",
+  "group": "ship-pipeline",
+  "purposeVi": "Tiếp nối /ship: kiểm tra mức sẵn sàng, merge PR sau khi được duyệt, theo dõi deploy và xác minh sản xuất bằng canary. Kết luận dựa trên bằng chứng chứ không suy ra từ việc đã merge hoặc HTTP 200.",
+  "whenToUse": "Sau khi /ship đã tạo PR: 'merge', 'land it', 'merge and deploy', 'ship to production'. Có thể kèm số PR (#123) và/hoặc URL để xác minh.",
+  "inputs": [
+    {
+      "name": "prNumber",
+      "type": "string",
+      "required": false,
+      "description": "Số PR dạng #NNN; mặc định tự dò từ nhánh hiện tại."
+    },
+    {
+      "name": "verifyUrl",
+      "type": "url",
+      "required": false,
+      "description": "URL sản xuất để canary; ưu tiên hơn URL cấu hình."
+    },
+    {
+      "name": "Deploy Configuration",
+      "type": "config",
+      "required": false,
+      "description": "Mục '## Deploy Configuration' trong CLAUDE.md do /setup-deploy tạo."
+    },
+    {
+      "name": "gh auth",
+      "type": "credential",
+      "required": true,
+      "description": "gh CLI đã đăng nhập; chưa thì DỪNG."
+    },
+    {
+      "name": "local checkout",
+      "type": "git-state",
+      "required": true,
+      "description": "Phải đúng nhánh/HEAD của PR và sạch, nếu không DỪNG (không tự switch/reset/stash)."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Pre-flight",
+      "instructionSummary": "Kiểm gh auth, xác định PR (OPEN mới đi tiếp; MERGED gợi ý /canary; CLOSED hỏi mở lại), ghim PR_HEAD và BASE_SHA, kiểm checkout cục bộ khớp, tính phạm vi diff (SCOPE_*)."
+    },
+    {
+      "title": "1.5 Dry-run lần đầu",
+      "instructionSummary": "Nếu FIRST_RUN/CONFIG_CHANGED (băm Deploy Configuration + workflow deploy) thì đọc section first-run-validation: dò hạ tầng, thử quyền chỉ đọc, hiển thị merge sẽ kích hoạt gì; A lưu fingerprint, B/C dừng."
+    },
+    {
+      "title": "2 Kiểm trước merge",
+      "instructionSummary": "gstack-ci-gate với expect-head và chờ đăng ký 60s; hành động theo dòng VERDICT (PASS/FAIL/PENDING/NO_CHECKS/ERROR), kiểm mergeable."
+    },
+    {
+      "title": "3 Chờ CI",
+      "instructionSummary": "Poll từng vòng 4 phút tối đa 15 phút; hết hạn thì hỏi chờ thêm / loại check required=n có tên / dừng."
+    },
+    {
+      "title": "3.4 Phát hiện lệch VERSION",
+      "instructionSummary": "So VERSION của PR với slot kế tiếp trong hàng đợi; nhỏ hơn thì DỪNG, yêu cầu chạy lại /ship (không tự bump)."
+    },
+    {
+      "title": "3.5 Cổng sẵn sàng (không thể đảo ngược)",
+      "instructionSummary": "Đọc section readiness-gate: độ mới của review theo nội dung, mời review inline nếu cũ, test miễn phí qua gstack-evidence, E2E/LLM eval, độ chính xác thân PR, kiểm document-release, sự thật về deploy; lập báo cáo PRE-MERGE READINESS và hỏi A merge / B hoãn / C merge dù có cảnh báo."
+    },
+    {
+      "title": "4 Merge",
+      "instructionSummary": "Chọn phương thức squash>merge>rebase theo cấu hình repo; readback GraphQL trước và sau mọi lần thử; thử --auto trước, chỉ một lần fallback direct; không --admin, không replay merge; xử lý merge queue chờ tối đa 30 phút; dọn worktree/nhánh remote có xác nhận."
+    },
+    {
+      "title": "5 Chiến lược deploy",
+      "instructionSummary": "Thứ tự ưu tiên: run deploy khớp SHA > VERIFY_URL > docs-only (MERGED - NO DEPLOY NEEDED) > hỏi URL; có thể xác minh staging tùy chọn (không giữ production)."
+    },
+    {
+      "title": "6 Chờ deploy",
+      "instructionSummary": "Theo GitHub Actions run khớp DEPLOY_SHA, CLI nền tảng (Fly/Render/Heroku), auto-deploy (Vercel/Netlify) hoặc hook tùy chỉnh; deadline 20 phút; thất bại thì hỏi xem log / revert / vẫn kiểm sức khỏe."
+    },
+    {
+      "title": "7 Canary xác minh",
+      "instructionSummary": "Một script aside repl: gắn hook console, tải trang, thu NAV/CONSOLE_ERRORS/ảnh chụp; độ sâu theo phạm vi diff; lỗi thì hỏi chấp nhận DEGRADED / revert / điều tra."
+    },
+    {
+      "title": "8 Revert (chỉ khi người dùng chọn)",
+      "instructionSummary": "Yêu cầu worktree sạch, fast-forward base, git revert đúng hình dạng commit đã hạ cánh; push thẳng hoặc mở PR revert nếu nhánh được bảo vệ; trạng thái ROLLBACK PENDING cho đến khi deploy lại và canary xanh."
+    },
+    {
+      "title": "9 Báo cáo deploy",
+      "instructionSummary": "Bảng phán quyết theo bằng chứng (DEPLOYED AND VERIFIED, DEPLOYED (UNVERIFIED), MERGED (UNVERIFIED), DEGRADED, REVERTED...); lưu .gstack/deploy-reports và ghi review log."
+    },
+    {
+      "title": "10 Gợi ý tiếp theo",
+      "instructionSummary": "Nói rõ phán quyết; đề xuất /canary, /benchmark, /document-release."
+    }
+  ],
+  "approvalGates": [
+    "Xác nhận thiết lập lần đầu / cấu hình đổi (Bước 1.5: A tiếp tục, B/C dừng)",
+    "Cổng sẵn sàng Bước 3.5: A merge / B hoãn / C merge dù có cảnh báo (blocker thì chỉ được dừng)",
+    "Ghi đè CI: loại check required=n có tên hoặc chấp nhận không có CI, chỉ cho đúng PR_HEAD",
+    "Review cũ/thiếu: chạy review nhanh inline / dừng chạy /review / bỏ qua",
+    "Chọn staging-first thật sự thì DỪNG trước merge và bàn giao pipeline cho người dùng",
+    "Hỏi URL production nếu không phát hiện được",
+    "Deploy thất bại hoặc quá 20 phút: xem log / revert / tiếp tục kiểm sức khỏe / chờ thêm",
+    "Canary phát hiện lỗi: chấp nhận DEGRADED / revert / điều tra",
+    "Revert chỉ sau lựa chọn rõ ràng; không bao giờ tự revert một rollback",
+    "Xóa worktree cũ và nhánh remote còn sót chỉ khi xác nhận"
+  ],
+  "outputs": [
+    "PR đã merge (merge SHA, đường merge auto/direct/queue/external)",
+    "Báo cáo LAND & DEPLOY, file .gstack/deploy-reports/{date}-pr{N}-deploy.md",
+    "Ảnh chụp post-deploy.jpg và bản chú thích trong .gstack/deploy-reports/",
+    "Bản ghi review log (status SUCCESS/REVERTED/INCOMPLETE + thời lượng từng giai đoạn)",
+    "PR revert hoặc commit revert nếu rollback"
+  ],
+  "dependsOn": [
+    "ship (tạo PR)",
+    "setup-deploy (Deploy Configuration)",
+    "canary (xác minh mở rộng)",
+    "gh CLI",
+    "aside browser",
+    "bin/gstack-ci-gate, gstack-next-version, gstack-review-read, gstack-evidence, gstack-diff-scope, gstack-issue-guard"
+  ],
+  "modes": [
+    "first-run (dry-run + dạy từng kiểm tra)",
+    "confirmed-run (cập nhật ngắn)",
+    "docs-only (bỏ qua deploy)",
+    "staging-optional",
+    "rollback"
+  ],
+  "riskLevel": "destructive",
+  "systemPromptCore": "You are the release engineer who takes over after the pull request exists. Automate read-only detection and polling, but never skip the explicit approvals: first-run setup confirmation and the pre-merge readiness gate. Pin the repository, PR number and exact head SHA at the start; every later command targets that pin, and a moved head or base invalidates approval. Require a clean local checkout on the PR head. Gate on CI for that head using the CI gate tool and act on its verdict line, never its exit code; unknown or missing CI is not green. Before merging, build a readiness report covering review freshness by content fingerprint, tests, PR body accuracy, documentation and deployment facts, then ask the user to merge, hold, or merge despite warnings; blockers allow only stopping. Merge only after reading authoritative state, prefer auto-merge then at most one direct fallback, never use admin bypass, and never replay a merge. After merging, find the deploy run matching the merge commit, wait with a deadline, then verify production with a single canary check. Derive the verdict from evidence: a merge or a 200 response alone never proves a deploy. Revert only on the user's explicit choice, adding inverse commits, and mark it pending until the rollback deploys and checks healthy. Save a deploy report."
+}
