@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { buildSystemPrompt } from './skills.mjs';
 import { toolDefs, executeTool } from './tools.mjs';
 import { redact } from './safety.mjs';
+import { BrowserSession } from './browser.mjs';
 
 const MAX_TURNS = 40;
 const MAX_TOKENS_OUT = 4096;
@@ -51,7 +52,7 @@ export class RunManager {
   get(id) { return this.runs.get(id); }
 
   #persistMeta(run) {
-    const { events, listeners, pending, abort, ...meta } = run;
+    const { events, listeners, pending, abort, closeBrowser, ...meta } = run;
     fs.writeFileSync(path.join(this.runsDir, run.id, 'run.json'), JSON.stringify(meta, null, 2));
   }
 
@@ -89,6 +90,7 @@ export class RunManager {
     run.status = status;
     run.verdict = verdict;
     run.pending = null;
+    run.closeBrowser?.().catch(() => {});
     this.#emit(run, 'end', { status, verdict, message });
     this.#persistMeta(run);
     this.audit(run.id, 'run_end', { status, verdict });
@@ -131,7 +133,10 @@ export class RunManager {
     const tools = toolDefs(skill);
     const messages = [{ role: 'user', content: run.prompt || `Chạy /${skill.name} cho workspace hiện tại.` }];
 
+    let browser = null;
+    run.closeBrowser = async () => { await browser?.close(); };
     const ctx = {
+      browser: () => (browser ||= new BrowserSession({ shotsDir: path.join(this.runsDir, run.id, 'shots') })),
       workspace: run.workspace,
       mode: run.mode,
       skill,
@@ -182,8 +187,11 @@ export class RunManager {
         try { r = await executeTool(u.name, u.input, ctx); } catch (e) { r = { content: `Lỗi công cụ: ${e.message}`, isError: true }; }
         if (run.abort.signal.aborted) return;
         const shown = redact(r.content);
-        this.#emit(run, 'tool_result', { id: u.id, isError: !!r.isError, text: shown.text.slice(0, 6000), redacted: shown.hits });
-        results.push({ type: 'tool_result', tool_use_id: u.id, content: shown.text, is_error: !!r.isError });
+        this.#emit(run, 'tool_result', { id: u.id, isError: !!r.isError, text: shown.text.slice(0, 6000), redacted: shown.hits, image: r.image?.name });
+        const content = r.image
+          ? [{ type: 'text', text: shown.text }, { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: r.image.base64 } }]
+          : shown.text;
+        results.push({ type: 'tool_result', tool_use_id: u.id, content, is_error: !!r.isError });
       }
       messages.push({ role: 'user', content: results });
     }

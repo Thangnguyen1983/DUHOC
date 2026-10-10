@@ -33,7 +33,7 @@ test('catalog nạp đủ skill và đánh dấu skill không chạy được', 
   const s = loadSkills();
   assert.ok(s.size >= 50);
   assert.equal(s.get('review').executable, true);
-  assert.equal(s.get('browse').executable, false);
+  assert.equal(s.get('pair-agent').executable, false);
   assert.equal(s.get('careful').kind, 'safety');
   assert.equal(s.get('cso').readOnly, true);
 });
@@ -111,7 +111,7 @@ test('ask_user chờ trả lời thật; workspace ngoài phạm vi và skill kh
     (msgs) => [tu('finish', { status: 'DONE', report: JSON.stringify(msgs.at(-1).content) })],
   ]);
   assert.equal((await call('/api/runs', { skill: 'review', workspace: os.tmpdir() })).status, 400);
-  assert.equal((await call('/api/runs', { skill: 'browse', workspace: ws })).status, 400);
+  assert.equal((await call('/api/runs', { skill: 'pair-agent', workspace: ws })).status, 400);
   const { body: { id } } = await call('/api/runs', { skill: 'office-hours', prompt: 'x', workspace: ws });
   const run = await waitFor(async () => { const r = (await call(`/api/runs/${id}`)).body; return r.pending && r; });
   assert.equal(run.pending.request.type, 'question');
@@ -140,4 +140,61 @@ test('freeze chặn sửa ngoài thư mục; dừng lượt chạy khi đang ch�
   assert.equal((await call(`/api/runs/${id}`)).body.status, 'stopped');
   assert.ok(!fs.existsSync(path.join(ws, 'src/in.txt')));
   await app.close();
+});
+
+import { parseUrl } from '../lib/browser.mjs';
+
+test('parseUrl chặn giao thức lạ và mạng nội bộ', () => {
+  assert.equal(parseUrl('file:///etc/passwd').ok, false);
+  assert.equal(parseUrl('javascript:alert(1)').ok, false);
+  assert.equal(parseUrl('http://169.254.169.254/latest').ok, false);
+  assert.equal(parseUrl('http://192.168.1.1').ok, false);
+  assert.equal(parseUrl('http://localhost:3000/x').local, true);
+  assert.equal(parseUrl('https://example.com').local, false);
+});
+
+test('skill trình duyệt: mở localhost, bấm, chụp ảnh, đọc lỗi console; trang ngoài phải duyệt', async () => {
+  const page = http.createServer((req, res) => {
+    if (req.url !== '/') { res.writeHead(404); return res.end(); }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end('<title>Thử</title><button onclick="document.body.append(\'ĐÃ-BẤM\');console.error(\'lỗi-thử\')">Gửi</button><img src="/missing.png">');
+  });
+  await new Promise((r) => page.listen(0, '127.0.0.1', r));
+  const target = `http://127.0.0.1:${page.address().port}/`;
+  const seen = [];
+  const { app, ws, call } = await setup([
+    [tu('browser_open', { url: target }, 'o')],
+    [tu('browser_snapshot', {}, 's')],
+    [tu('browser_click', { index: 0, reason: 'thử' }, 'c')],
+    [tu('browser_screenshot', {}, 'p'), tu('browser_console', {}, 'k')],
+    (msgs) => { seen.push(...msgs.at(-1).content); return [tu('browser_open', { url: 'https://example.com' }, 'x')]; },
+    [tu('finish', { status: 'DONE', report: 'ok' })],
+  ]);
+  const { body: { id } } = await call('/api/runs', { skill: 'qa-only', prompt: 'x', workspace: ws });
+  // trang ngoài localhost phải chờ duyệt; từ chối
+  const run = await waitFor(async () => { const r = (await call(`/api/runs/${id}`)).body; return r.pending && r; }, 20000);
+  assert.equal(run.pending.request.type, 'browser');
+  assert.match(run.pending.request.command, /example\.com/);
+  await call(`/api/runs/${id}/respond`, { pendingId: run.pending.id, allow: false });
+  await waitFor(async () => (await call(`/api/runs/${id}`)).body.status === 'done', 10000);
+  const full = (await call(`/api/runs/${id}`)).body;
+  const results = full.events.filter((e) => e.type === 'tool_result');
+  assert.match(results.find((e) => e.id === 's').text, /Gửi/);
+  assert.match(results.find((e) => e.id === 'c').text, /Đã bấm/);
+  assert.ok(results.find((e) => e.id === 'p').image);
+  assert.match(results.find((e) => e.id === 'k').text, /lỗi-thử/);
+  assert.match(results.find((e) => e.id === 'k').text, /404/);
+  assert.ok(seen.some((b) => Array.isArray(b.content) && b.content.some((c) => c.type === 'image')), 'ảnh phải tới mô hình');
+  const img = await fetch(`${app.token ? '' : ''}http://127.0.0.1:${app.server.address().port}/api/runs/${id}/shots/shot1.jpg`, { headers: { cookie: `cc=${app.token}` } });
+  assert.equal(img.status, 200);
+  await app.close();
+  page.close();
+});
+
+test('skill QA không có công cụ trình duyệt khi không thuộc nhóm trình duyệt', () => {
+  const s = loadSkills();
+  assert.equal(s.get('qa').browser, true);
+  assert.equal(s.get('qa').executable, true);
+  assert.equal(s.get('review').browser, false);
+  assert.equal(s.get('qa-only').readOnly, true);
 });

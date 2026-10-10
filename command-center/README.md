@@ -8,7 +8,7 @@
 export ANTHROPIC_API_KEY=sk-ant-...      # bắt buộc để agent thực thi
 # tuỳ chọn: CC_MODEL (mặc định claude-sonnet-5-5), CC_ROOTS (thư mục được phép, cách nhau bằng ':'), PORT (4577)
 node server.mjs                           # in ra đường dẫn kèm token
-npm test                                  # 13 test (an toàn + luồng đầy đủ)
+npm test                                  # 16 test (an toàn, luồng đầy đủ, trình duyệt)
 ```
 
 Không cần cài thư viện (Node ≥ 20). Mặc định chỉ cho làm việc trong thư mục cha của `command-center/`.
@@ -32,4 +32,11 @@ Không cần cài thư viện (Node ≥ 20). Mặc định chỉ cho làm việc
 
 ## Skill
 
-`data/skills/*.json`: 52 đặc tả (mục tiêu, bước, cổng duyệt, đầu ra) viết lại từ SKILL.md của gstack. 31 skill chạy được; 21 skill cần trình duyệt/thiết bị/dịch vụ riêng hiển thị mờ kèm lý do; careful/freeze/guard/unfreeze được thực thi bằng bảng An toàn và chính sách công cụ.
+`data/skills/*.json`: 52 đặc tả (mục tiêu, bước, cổng duyệt, đầu ra) viết lại từ SKILL.md của gstack. 38 skill chạy được; 10 skill cần thiết bị/dịch vụ riêng (iOS-không có, GBrain, cookie, ghép agent, tạo ảnh…) hiển thị mờ kèm lý do; careful/freeze/guard/unfreeze được thực thi bằng bảng An toàn và chính sách công cụ.
+
+## Trình duyệt (qa, qa-only, design-review, devex-review, canary, browse, scrape)
+
+Cần Playwright (`playwright-core` hoặc `CC_PLAYWRIGHT=/đường/dẫn`) và Chromium (`CC_CHROMIUM` nếu không dùng bản mặc định). Mỗi lượt chạy dùng ngữ cảnh trống (không cookie, không đăng nhập), đóng khi kết thúc.
+- `localhost` mở ngay; **mỗi trang ngoài phải được bạn duyệt theo origin**, và mọi thao tác bấm/điền trên trang ngoài đều hỏi lại.
+- Chặn `file:`, `javascript:`, mạng nội bộ và địa chỉ metadata (kể cả yêu cầu do trang tự gọi). Không nhập cookie, không chạy JS tuỳ ý.
+- Nội dung trang là dữ liệu không tin cậy. Ảnh chụp gửi cho mô hình và hiện trong dòng thời gian.

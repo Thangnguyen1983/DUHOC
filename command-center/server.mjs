@@ -102,6 +102,13 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
         } catch (e) { return json(res, 400, { error: e.message }); }
         return json(res, 201, { id: run.id });
       }
+      const shot = url.pathname.match(/^\/api\/runs\/(\w+)\/shots\/(shot\d+\.jpg)$/);
+      if (shot && req.method === 'GET') {
+        const f = path.join(dataDir, 'runs', shot[1], 'shots', shot[2]);
+        if (!manager.get(shot[1]) || !fs.existsSync(f)) return json(res, 404, { error: 'Không có ảnh.' });
+        res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+        return res.end(fs.readFileSync(f));
+      }
       let m = url.pathname.match(/^\/api\/runs\/([\w]+)(?:\/(stream|respond|stop|report))?$/);
       if (m) {
         const run = manager.get(m[1]);

@@ -7,8 +7,6 @@ const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data'
 
 // Skill cần trình duyệt/thiết bị/dịch vụ mà ứng dụng này không có: hiển thị nhưng không chạy.
 const UNAVAILABLE = {
-  browse: 'Cần trình duyệt headless của gstack.',
-  scrape: 'Cần trình duyệt headless của gstack.',
   'setup-browser-cookies': 'Nhập cookie trình duyệt: không cho đi qua agent.',
   'open-gstack-browser': 'Cần trình duyệt của gstack.',
   'connect-chrome': 'Cần trình duyệt của gstack.',
@@ -18,21 +16,20 @@ const UNAVAILABLE = {
   'gstack-upgrade': 'Cập nhật gstack không áp dụng cho ứng dụng này.',
   'design-shotgun': 'Cần khóa API tạo ảnh và trình duyệt.',
   'design-html': 'Cần trình duyệt để xem trước.',
-  'design-review': 'Cần trình duyệt để chấm giao diện.',
-  'devex-review': 'Cần trình duyệt/sản phẩm đang chạy.',
-  qa: 'Cần trình duyệt để kiểm thử.',
-  'qa-only': 'Cần trình duyệt để kiểm thử.',
-  canary: 'Cần trình duyệt/URL production.',
   'make-pdf': 'Cần công cụ dựng PDF của gstack.',
 };
 
 // careful/freeze/guard/unfreeze là hook an toàn: ứng dụng thực thi bằng bảng "An toàn".
 const SAFETY_SKILLS = new Set(['careful', 'freeze', 'guard', 'unfreeze']);
 
+// Skill được cấp công cụ trình duyệt headless (Playwright).
+const BROWSER = new Set(['browse', 'scrape', 'qa', 'qa-only', 'design-review', 'devex-review', 'canary']);
+
 // Skill không được ghi file hay chạy lệnh ghi: chỉ đọc.
 const READ_ONLY = new Set([
   'cso', 'health', 'benchmark', 'benchmark-models', 'deslop-shared-libs', 'landing-report',
   'test-audit', 'retro', 'context-restore', 'codex', 'claude-code',
+  'qa-only', 'canary', 'browse', 'scrape', 'design-review', 'devex-review',
 ]);
 
 // Skill có tác động ra ngoài/không đảo ngược: mọi lệnh không-chỉ-đọc luôn hỏi, kể cả chế độ tự sửa.
@@ -85,6 +82,7 @@ export function loadSkills(dir = DIR) {
       riskLevel: raw.riskLevel || (READ_ONLY.has(name) ? 'read' : 'write-local'),
       systemPromptCore: raw.systemPromptCore || '',
       readOnly: READ_ONLY.has(name),
+      browser: BROWSER.has(name),
       alwaysAsk: ALWAYS_ASK.has(name),
       next: NEXT[name] || [],
       executable: !unavailable && !safety,

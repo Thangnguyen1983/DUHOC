@@ -146,7 +146,7 @@ function renderEvent(ev) {
       break;
     case 'tool_result': {
       const t = tl.querySelector(`[data-tool="${CSS.escape(ev.id)}"]`) || tl;
-      t.append(h('details', { class: ev.isError ? 'error' : '' }, h('summary', {}, ev.isError ? 'Kết quả (lỗi)' : 'Kết quả', ev.redacted ? ` · đã che ${ev.redacted} bí mật` : ''), h('pre', {}, ev.text)));
+      t.append(h('details', { class: ev.isError ? 'error' : '' }, h('summary', {}, ev.isError ? 'Kết quả (lỗi)' : 'Kết quả', ev.redacted ? ` · đã che ${ev.redacted} bí mật` : ''), h('pre', {}, ev.text), ev.image ? h('img', { src: `/api/runs/${current.id}/shots/${ev.image}`, alt: 'Ảnh chụp trang', style: 'max-width:100%;border:1px solid var(--line);border-radius:6px' }) : null));
       break;
     }
     case 'pending': tl.append(renderPending(ev)); break;
@@ -176,7 +176,7 @@ function renderPending(ev) {
       h('b', {}, 'Cần quyết định của bạn'), h('p', {}, r.question), r.recommendation ? h('p', {}, `Khuyến nghị: ${r.recommendation}`) : null,
       h('div', { class: 'row' }, ...(r.options || []).map((o) => h('button', { class: 'opt', type: 'button', onclick: () => respond({ answer: o }) }, o))));
   }
-  const body = r.type === 'command'
+  const body = (r.type === 'command' || r.type === 'browser')
     ? [h('pre', {}, r.command), h('p', {}, `Lý do: ${r.reason || '—'} · luật: ${r.rule}`)]
     : [h('p', {}, `${r.path} — ${r.reason || ''}`), h('div', { class: 'diff' }, h('pre', {}, r.before == null ? '(file mới)' : r.before.slice(0, 4000)), h('pre', {}, (r.after || '').slice(0, 4000)))];
   const why = h('input', { placeholder: 'Lý do từ chối (không bắt buộc)' });
