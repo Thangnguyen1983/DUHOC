@@ -9,12 +9,17 @@ import { loadSkills, suggest, parseCommand, PIPELINES } from './lib/skills.mjs';
 import { RunManager } from './lib/runs.mjs';
 import { Factory } from './lib/factory.mjs';
 import { anthropicProvider, noKeyProvider } from './lib/provider.mjs';
+import { loadEnvFile, setEnvVar, keyHint, validKey } from './lib/env.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(HERE, 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 
-export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, token = crypto.randomBytes(24).toString('hex'), port = 0 } = {}) {
+export function createApp({ dataDir = path.join(HERE, 'data'), provider: initialProvider, envFile = path.join(HERE, '.env.local'), roots, token = crypto.randomBytes(24).toString('hex'), port = 0 } = {}) {
+  // Nhà cung cấp mô hình có thể đổi nóng khi bạn nhập khoá trong giao diện.
+  let inner = initialProvider;
+  let currentKey = process.env.ANTHROPIC_API_KEY || null;
+  const provider = { get name() { return inner.name; }, get model() { return inner.model; }, complete: (a) => inner.complete(a) };
   const skills = loadSkills();
   const allowedRoots = (roots || [path.resolve(HERE, '..')]).map((r) => fs.realpathSync(r));
   const safetyFile = path.join(dataDir, 'safety.json');
@@ -24,8 +29,8 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
 
   const manager = new RunManager({ dataDir, skills, provider, getSafety: () => safety });
   const factory = new Factory({ dataDir, manager, skills });
-  const timer = provider.name === 'none' ? null : setInterval(() => { try { factory.tick(); } catch { /* ngân sách/ lỗi: bỏ qua lượt này */ } }, 10 * 60_000);
-  timer?.unref();
+  const timer = setInterval(() => { try { if (provider.name !== 'none') factory.tick(); } catch { /* ngân sách/lỗi: bỏ qua lượt này */ } }, 10 * 60_000);
+  timer.unref();
 
   const inRoots = (p) => {
     try {
@@ -142,6 +147,18 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
         }
         return json(res, 404, { error: 'Không tìm thấy.' });
       }
+      if (url.pathname === '/api/settings' && req.method === 'GET') return json(res, 200, { hasKey: provider.name !== 'none', keyHint: provider.name === 'none' ? null : keyHint(currentKey), model: provider.model, envFile: path.basename(envFile) });
+      if (url.pathname === '/api/settings/key' && req.method === 'POST') {
+        const b = await readBody(req);
+        const k = String(b.apiKey || '').trim();
+        if (k && !validKey(k)) return json(res, 400, { error: 'Khoá không hợp lệ (20-300 ký tự chữ, số, - hoặc _).' });
+        setEnvVar(envFile, 'ANTHROPIC_API_KEY', k);
+        currentKey = k || null;
+        if (k) process.env.ANTHROPIC_API_KEY = k; else delete process.env.ANTHROPIC_API_KEY;
+        inner = k ? anthropicProvider({ apiKey: k, model: process.env.CC_MODEL || 'claude-sonnet-5-5' }) : noKeyProvider();
+        manager.audit('-', k ? 'api_key_set' : 'api_key_cleared', {});
+        return json(res, 200, { hasKey: !!k, keyHint: keyHint(k), model: provider.model });
+      }
       let m = url.pathname.match(/^\/api\/runs\/([\w]+)(?:\/(stream|respond|stop|report))?$/);
       if (m) {
         const run = manager.get(m[1]);
@@ -211,11 +228,23 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const envFile = path.join(HERE, '.env.local');
+  loadEnvFile(envFile);
   const key = process.env.ANTHROPIC_API_KEY;
   const provider = key ? anthropicProvider({ apiKey: key, model: process.env.CC_MODEL || 'claude-sonnet-5-5' }) : noKeyProvider();
   const roots = process.env.CC_ROOTS ? process.env.CC_ROOTS.split(path.delimiter) : undefined;
-  const app = createApp({ provider, roots, token: process.env.CC_TOKEN, port: Number(process.env.PORT || 4577) });
+  // Token cố định (lưu trong data/token) để đường link luôn giống nhau và dùng được làm dấu trang.
+  const tokenFile = path.join(HERE, 'data', 'token');
+  let token = process.env.CC_TOKEN;
+  if (!token) {
+    try { token = fs.readFileSync(tokenFile, 'utf8').trim(); } catch { /* chưa có */ }
+    if (!token || token.length < 32) { token = crypto.randomBytes(24).toString('hex'); fs.mkdirSync(path.dirname(tokenFile), { recursive: true }); fs.writeFileSync(tokenFile, token, { mode: 0o600 }); }
+  }
+  const app = createApp({ provider, roots, envFile, token, port: Number(process.env.PORT || 4577) });
   const port = await app.listen();
-  console.log(`Trung tâm điều khiển: http://127.0.0.1:${port}/?token=${app.token}`);
-  console.log(key ? `Mô hình: ${provider.model}` : 'CHƯA có ANTHROPIC_API_KEY: giao diện chạy được nhưng agent chưa thực thi.');
+  const link = `http://127.0.0.1:${port}/?token=${app.token}`;
+  fs.mkdirSync(path.join(HERE, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(HERE, 'data', '.url'), link, { mode: 0o600 });
+  console.log(`\nTrung tâm điều khiển: ${link}\n`);
+  console.log(key ? `Mô hình: ${provider.model}` : 'Chưa có khoá API: mở đường link trên, bấm "Khoá API" ở góc phải để nhập.');
 }

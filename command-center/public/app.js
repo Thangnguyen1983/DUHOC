@@ -309,3 +309,18 @@ $('#fac-research').addEventListener('click', async () => {
 $('#sch-save').addEventListener('click', async () => {
   try { await api('/api/factory/schedule', { enabled: $('#sch-on').checked, everyHours: Number($('#sch-hours').value), maxPerDay: Number($('#sch-max').value), focus: $('#fac-focus').value }); $('#fac-msg').textContent = 'Đã lưu lịch (chỉ chạy khi máy chủ đang mở).'; } catch (e) { $('#fac-msg').textContent = e.message; }
 });
+
+// ---- Khoá API ----
+const keyDlg = $('#key-dialog');
+async function loadKeyStatus() {
+  const k = await api('/api/settings');
+  $('#key-status').textContent = k.hasKey ? `Đã cấu hình khoá ${k.keyHint} · mô hình ${k.model}` : 'Chưa có khoá: agent chưa thể chạy.';
+}
+$('#key-btn').addEventListener('click', () => { $('#key-msg').textContent = ''; $('#key-input').value = ''; loadKeyStatus().then(() => keyDlg.showModal()); });
+$('#provider').addEventListener('click', () => $('#key-btn').click());
+$('#key-close').addEventListener('click', () => keyDlg.close());
+async function saveKey(value) {
+  try { await api('/api/settings/key', { apiKey: value }); $('#key-input').value = ''; await loadKeyStatus(); await refresh(); $('#key-msg').textContent = value ? 'Đã lưu.' : 'Đã xoá.'; } catch (e) { $('#key-msg').textContent = e.message; }
+}
+$('#key-save').addEventListener('click', () => saveKey($('#key-input').value.trim()));
+$('#key-clear').addEventListener('click', () => { if (confirm('Xoá khoá API đã lưu?')) saveKey(''); });

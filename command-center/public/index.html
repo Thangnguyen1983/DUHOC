@@ -11,6 +11,7 @@
   <h1>Trung tâm điều khiển</h1>
   <span id="provider" class="pill"></span>
   <span id="freeze" class="pill"></span>
+  <button id="key-btn" class="ghost" type="button">Khoá API</button>
   <button id="freeze-btn" class="ghost">Freeze…</button>
 </header>
 <nav id="tabs"><button id="tab-cmd" class="chip active" type="button">Lệnh</button><button id="tab-fac" class="chip" type="button">Nhà máy ứng dụng</button></nav>
@@ -65,6 +66,14 @@
     <div id="run-list"></div>
   </aside>
 </main>
+<dialog id="key-dialog">
+  <h3>Khoá API Anthropic</h3>
+  <p id="key-status"></p>
+  <label>Dán khoá mới (bắt đầu bằng sk-ant-…)<input id="key-input" type="password" autocomplete="off" spellcheck="false"></label>
+  <p><small>Khoá được lưu trong tệp <code>.env.local</code> trên máy chạy ứng dụng (quyền chỉ chủ sở hữu đọc, đã loại khỏi git) và không bao giờ được gửi lại cho trình duyệt.</small></p>
+  <div class="row"><button id="key-save" type="button">Lưu khoá</button><button id="key-clear" class="danger" type="button">Xoá khoá</button><button id="key-close" class="ghost" type="button">Đóng</button></div>
+  <p id="key-msg" role="status"></p>
+</dialog>
 <dialog id="dir-dialog">
   <p id="dir-path"></p>
   <div id="dir-list"></div>

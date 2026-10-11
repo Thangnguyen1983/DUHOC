@@ -2,14 +2,15 @@
 
 Ứng dụng độc lập: bạn ra lệnh theo skill kiểu [gstack](https://github.com/garrytan/gstack), agent thực hiện trên một thư mục dự án, còn **mọi thao tác ghi file, chạy lệnh có tác động và các quyết định quan trọng đều chờ bạn duyệt**.
 
-## Chạy
+## Chạy (trên máy của bạn)
 
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...      # bắt buộc để agent thực thi
-# tuỳ chọn: CC_MODEL (mặc định claude-sonnet-5-5), CC_ROOTS (thư mục được phép, cách nhau bằng ':'), PORT (4577)
-node server.mjs                           # in ra đường dẫn kèm token
-npm test                                  # 21 test (an toàn, luồng, trình duyệt, Nhà máy)
-```
+Cần [Node.js 20+](https://nodejs.org). Clone repo, rồi:
+
+- **Mac/Linux:** `./start.sh`  ·  **Windows:** nhấp đôi `start.bat`  ·  hoặc `node server.mjs`
+- Máy chủ in ra **đường link** dạng `http://127.0.0.1:4577/?token=…` và tự mở trình duyệt. Link **cố định** (token lưu ở `data/token`), lưu làm dấu trang được. Link chỉ mở được trên chính máy đang chạy, đó là chủ ý: ứng dụng có thể chạy lệnh trên máy bạn nên không nên công khai ra Internet.
+- **Nhập khoá API:** bấm nút **Khoá API** ở góc phải giao diện, hoặc mở tệp `command-center/.env.local` và điền `ANTHROPIC_API_KEY=sk-ant-...`. Khoá nằm trong tệp đó (quyền 600, đã loại khỏi git), không bao giờ được gửi lại cho trình duyệt hay ghi vào nhật ký.
+- Tuỳ chọn: `CC_MODEL` (mặc định claude-sonnet-5-5), `CC_ROOTS` (thư mục được phép, cách nhau bằng `:`), `PORT` (4577).
+- `npm test`: 22 test (an toàn, luồng, trình duyệt, Nhà máy, khoá API).
 
 Không cần cài thư viện (Node ≥ 20). Mặc định chỉ cho làm việc trong thư mục cha của `command-center/`.
 

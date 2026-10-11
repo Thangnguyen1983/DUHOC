@@ -122,3 +122,32 @@ test('ngân sách token của Nhà máy chặn việc mới; lịch tự nghiên
   assert.ok(f.tick(1_000_000_000_000 + 25 * 3_600_000 - 1) === null || true);
   await t.app.close(); t.restore();
 });
+
+import { noKeyProvider } from '../lib/provider.mjs';
+
+test('nhập khoá API trong giao diện: lưu 0600, không bao giờ trả lại khoá, đổi provider nóng, xoá được', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-k-'));
+  const envFile = path.join(dir, '.env.local');
+  fs.writeFileSync(envFile, 'CC_MODEL=x\n');
+  const saved = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;
+  const app = createApp({ dataDir: dir, provider: noKeyProvider(), envFile, roots: [dir], token: 'tok'.repeat(10) });
+  const port = await app.listen(); const base = `http://127.0.0.1:${port}`;
+  const call = (p, body) => fetch(base + p, { method: body === undefined ? 'GET' : 'POST', headers: { cookie: `cc=${app.token}`, origin: base, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }).then(async (r) => ({ status: r.status, text: await r.text() }));
+  assert.equal(JSON.parse((await call('/api/settings')).text).hasKey, false);
+  assert.equal((await call('/api/settings/key', { apiKey: 'ngan' })).status, 400);
+  const KEY = 'sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWXYZ1234';
+  const r = await call('/api/settings/key', { apiKey: KEY });
+  assert.equal(r.status, 200);
+  for (const p of ['/api/settings', '/api/state']) assert.ok(!(await call(p)).text.includes('ABCDEFGHIJKLMNOP'), `${p} không được lộ khoá`);
+  assert.equal(JSON.parse((await call('/api/settings')).text).keyHint, '…1234');
+  assert.equal(fs.statSync(envFile).mode & 0o777, 0o600);
+  const content = fs.readFileSync(envFile, 'utf8');
+  assert.match(content, /CC_MODEL=x/); assert.ok(content.includes(`ANTHROPIC_API_KEY=${KEY}`));
+  assert.equal(JSON.parse((await call('/api/state')).text).provider.name, 'anthropic');
+  assert.ok(!fs.readFileSync(path.join(dir, 'audit.jsonl'), 'utf8').includes('ABCDEFGH'), 'nhật ký không chứa khoá');
+  await call('/api/settings/key', { apiKey: '' });
+  assert.ok(!fs.readFileSync(envFile, 'utf8').includes('ANTHROPIC_API_KEY'));
+  assert.equal(JSON.parse((await call('/api/state')).text).provider.name, 'none');
+  await app.close();
+  if (saved) process.env.ANTHROPIC_API_KEY = saved; else delete process.env.ANTHROPIC_API_KEY;
+});

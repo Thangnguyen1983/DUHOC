@@ -1,3 +1,8 @@
 data/runs/
 data/audit.jsonl
 data/safety.json
+.env.local
+.env.local.tmp
+data/token
+data/factory/
+data/.url
