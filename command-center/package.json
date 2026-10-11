@@ -1,0 +1,9 @@
+{
+  "name": "command-center",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Trung tâm điều khiển: ra lệnh theo skill kiểu gstack, agent thực thi, bạn duyệt từng bước ghi/đẩy code.",
+  "scripts": { "start": "node server.mjs", "test": "node --test test/*.test.mjs" },
+  "engines": { "node": ">=20" }
+}

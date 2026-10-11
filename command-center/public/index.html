@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trung tâm điều khiển</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>Trung tâm điều khiển</h1>
+  <span id="provider" class="pill"></span>
+  <span id="freeze" class="pill"></span>
+  <button id="key-btn" class="ghost" type="button">Khoá API</button>
+  <button id="freeze-btn" class="ghost">Freeze…</button>
+</header>
+<nav id="tabs"><button id="tab-cmd" class="chip active" type="button">Lệnh</button><button id="tab-fac" class="chip" type="button">Nhà máy ứng dụng</button></nav>
+<section id="factory" hidden>
+  <div class="panel">
+    <div class="row spread"><h2>Nghiên cứu thị trường</h2><span id="fac-budget" class="pill"></span></div>
+    <div class="row"><label>Trọng tâm (tuỳ chọn)<input id="fac-focus" placeholder="vd: công cụ cho giáo viên, thị trường Việt Nam"></label><button id="fac-research" type="button">Nghiên cứu ngay</button></div>
+    <div class="row sched"><label class="inline"><input type="checkbox" id="sch-on" style="width:auto"> Tự nghiên cứu theo lịch (chỉ đọc)</label><label>Mỗi (giờ)<input id="sch-hours" type="number" min="1" max="168" value="24"></label><label>Tối đa/ngày<input id="sch-max" type="number" min="1" max="6" value="2"></label><button id="sch-save" class="ghost" type="button">Lưu lịch</button></div>
+    <p id="fac-msg" role="status"></p>
+  </div>
+  <div class="panel"><h2>Cơ hội đã tìm thấy</h2><div id="ops"></div></div>
+  <div class="panel"><h2>Dự án</h2><div id="projects"></div></div>
+</section>
+<main id="main">
+  <aside id="skills" aria-label="Danh sách skill">
+    <input id="skill-search" type="search" placeholder="Tìm skill…">
+    <div id="skill-list"></div>
+  </aside>
+  <section id="center">
+    <form id="cmd-form">
+      <div class="row">
+        <label>Workspace
+          <input id="workspace" required>
+        </label>
+        <button type="button" id="browse" class="ghost">Chọn…</button>
+        <label>Chế độ sửa file
+          <select id="mode">
+            <option value="ask">Hỏi mọi thay đổi</option>
+            <option value="auto-edit">Tự sửa file thường (lệnh vẫn hỏi)</option>
+          </select>
+        </label>
+      </div>
+      <textarea id="cmd" rows="3" placeholder="/review kiểm tra diff của nhánh này   — hoặc mô tả việc cần làm, hệ thống sẽ gợi ý skill"></textarea>
+      <div class="row">
+        <button type="submit" id="run">Chạy</button>
+        <span id="form-msg" role="status"></span>
+      </div>
+      <div id="suggestions"></div>
+      <div id="pipelines"></div>
+    </form>
+    <div id="run-view" hidden>
+      <div class="row spread">
+        <h2 id="run-title"></h2>
+        <button id="stop" class="danger" hidden>Dừng</button>
+      </div>
+      <div id="timeline" aria-live="polite"></div>
+      <div id="next-steps"></div>
+    </div>
+  </section>
+  <aside id="runs" aria-label="Lượt chạy">
+    <h3>Lượt chạy</h3>
+    <div id="run-list"></div>
+  </aside>
+</main>
+<dialog id="key-dialog">
+  <h3>Khoá API Anthropic</h3>
+  <p id="key-status"></p>
+  <label>Dán khoá mới (bắt đầu bằng sk-ant-…)<input id="key-input" type="password" autocomplete="off" spellcheck="false"></label>
+  <label>Workspace ID (chỉ cần nếu báo lỗi "not scoped to a workspace")<input id="ws-input" autocomplete="off" spellcheck="false" placeholder="wrkspc_… hoặc mã workspace trong Console"></label>
+  <p><small>Khoá được lưu trong tệp <code>.env.local</code> trên máy chạy ứng dụng (quyền chỉ chủ sở hữu đọc, đã loại khỏi git) và không bao giờ được gửi lại cho trình duyệt.</small></p>
+  <div class="row"><button id="key-save" type="button">Lưu</button><button id="key-clear" class="danger" type="button">Xoá khoá</button><button id="key-close" class="ghost" type="button">Đóng</button></div>
+  <p id="key-msg" role="status"></p>
+</dialog>
+<dialog id="dir-dialog">
+  <p id="dir-path"></p>
+  <div id="dir-list"></div>
+  <div class="row"><button id="dir-pick">Chọn thư mục này</button><button id="dir-up" class="ghost">Lên một cấp</button><button id="dir-close" class="ghost">Đóng</button></div>
+</dialog>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

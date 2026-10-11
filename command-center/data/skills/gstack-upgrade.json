@@ -1,0 +1,104 @@
+{
+  "name": "gstack-upgrade",
+  "group": "maintenance",
+  "purposeVi": "Nâng cấp gstack lên bản mới nhất: tự phát hiện cài toàn cục (git) hay vendored, thực hiện nâng cấp an toàn (ff-only, backup/khôi phục), đồng bộ bản vendored cục bộ, chạy migration, dừng daemon browse cũ và tóm tắt điểm mới từ CHANGELOG.",
+  "whenToUse": "'upgrade gstack', 'update gstack', 'get latest version', hoặc khi preamble của skill khác báo UPGRADE_AVAILABLE.",
+  "inputs": [
+    {
+      "name": "auto_upgrade",
+      "type": "config",
+      "required": false,
+      "description": "GSTACK_AUTO_UPGRADE=1 hoặc config auto_upgrade=true: bỏ qua câu hỏi."
+    },
+    {
+      "name": "UPGRADE_AVAILABLE old new",
+      "type": "signal",
+      "required": false,
+      "description": "Từ gstack-update-check; CHECK_FAILED nghĩa là trạng thái chưa rõ, không được nói 'đã mới nhất'."
+    },
+    {
+      "name": "install location",
+      "type": "path",
+      "required": true,
+      "description": "Tự dò: global-git, local-git, vendored, vendored-global hoặc checkout đã đăng ký."
+    },
+    {
+      "name": "team_mode",
+      "type": "config",
+      "required": false,
+      "description": "Nếu true, bản vendored cục bộ bị gỡ thay vì cập nhật."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Hỏi (hoặc tự nâng cấp)",
+      "instructionSummary": "Chọn: nâng cấp ngay / luôn cập nhật / chưa / đừng hỏi nữa; 'chưa' ghi snooze leo thang 24h-48h-1 tuần."
+    },
+    {
+      "title": "2 Dò kiểu cài",
+      "instructionSummary": "Xác định INSTALL_TYPE và INSTALL_DIR tuyệt đối; mang giá trị tường minh qua các shell."
+    },
+    {
+      "title": "3 Lưu phiên bản cũ",
+      "instructionSummary": "Đọc VERSION."
+    },
+    {
+      "title": "4 Nâng cấp",
+      "instructionSummary": "Git: bỏ bụi render, fetch, kiểm Bun tối thiểu của bản mới, ghi PRE_UPGRADE_COMMIT, pull --ff-only --autostash, ./setup --refresh-registered; FF_REFUSED thì chỉ reset --hard khi cây sạch và không có commit chưa push, nếu không phải hỏi (cửa một chiều, yêu cầu gõ đúng chữ cái). Vendored: clone nông, đổi tên .bak, setup, lỗi thì khôi phục."
+    },
+    {
+      "title": "4.5 Bản vendored cục bộ",
+      "instructionSummary": "Team mode: gỡ và thêm vào .gitignore; ngược lại sao chép từ bản chính, có khôi phục khi lỗi (LOCAL_SYNC_OK)."
+    },
+    {
+      "title": "4.75 Migration",
+      "instructionSummary": "Chạy các v*.sh mới hơn bản cũ (idempotent, lỗi không chí mạng)."
+    },
+    {
+      "title": "4.8 Dừng daemon cũ",
+      "instructionSummary": "Daemon browse stale-responsive thì dừng; stale-busy thì hoãn, không giết."
+    },
+    {
+      "title": "5 Ghi marker + xóa cache",
+      "instructionSummary": "just-upgraded-from, xóa last-update-check và update-snoozed."
+    },
+    {
+      "title": "6 Hiện điểm mới",
+      "instructionSummary": "Tóm tắt 5-7 gạch đầu dòng theo chủ đề từ CHANGELOG giữa hai phiên bản."
+    },
+    {
+      "title": "7 Tiếp tục",
+      "instructionSummary": "Quay lại skill ban đầu của người dùng. Gọi trực tiếp: ép kiểm tra cập nhật mới, xử lý bản vendored lệch."
+    }
+  ],
+  "approvalGates": [
+    "Hỏi nâng cấp (trừ khi auto_upgrade)",
+    "FF_REFUSED với commit/thay đổi cục bộ chưa lưu: AskUserQuestion cửa một chiều liệt kê chính xác thứ sẽ bị bỏ; A reset (phải gõ đúng) / B hủy (khuyến nghị)",
+    "BUN_TOO_OLD hoặc SETUP_FAILED: DỪNG, không reset mù quáng",
+    "Stale .bak từ lần nâng cấp hỏng: dừng để người dùng kiểm tra, không tự xóa"
+  ],
+  "outputs": [
+    "gstack mới + setup đã làm mới cho các host đã đăng ký (bảng Upgrade summary)",
+    "Marker just-upgraded-from",
+    "Tóm tắt 'What's new' từ CHANGELOG",
+    "Thông báo về stash/bản vendored/daemon nếu có"
+  ],
+  "dependsOn": [
+    "git",
+    "bin/gstack-update-check, gstack-config, gstack-paths",
+    "./setup --refresh-registered",
+    "bun",
+    "gstack-upgrade/migrations/v*.sh",
+    "browse daemon"
+  ],
+  "modes": [
+    "inline (từ preamble)",
+    "standalone",
+    "auto-upgrade",
+    "git install",
+    "vendored install",
+    "team mode"
+  ],
+  "riskLevel": "destructive",
+  "systemPromptCore": "You upgrade the gstack toolkit and report what is new. Decide whether to ask: if automatic upgrades are enabled, proceed; otherwise offer upgrade now, always keep up to date, not now (snooze with escalating backoff of one day, two days, one week) or never ask again. Detect the install type and resolve an absolute install directory, and carry it explicitly into every later shell because shells do not persist. Save the old version. For git installs, discard regenerable render footprint, fetch, check the incoming release's minimum runtime version, record the pre-upgrade commit, then fast-forward only with autostash and refresh all registered installs; if setup fails, stop and report the recovery commit. Only when fast-forward is refused may you reset hard, and only if the tree is clean with no unpushed commits; otherwise list exactly what would be discarded and require an explicit typed choice, treating anything vague as not confirmed. For vendored installs clone shallowly, back up the old copy, swap, run setup, and restore the backup on any failure; refuse to proceed over a stale backup. Handle a separate local vendored copy (remove in team mode, otherwise sync with rollback). Run version migrations newer than the old version, stop any stale browse daemon unless it is busy, write the upgrade marker and clear caches, then summarize the changelog in five to seven themed bullets. If the update check itself failed, say the status is unknown."
+}

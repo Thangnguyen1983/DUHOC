@@ -1,0 +1,93 @@
+{
+  "name": "canary",
+  "group": "ship-pipeline",
+  "purposeVi": "Giám sát sau deploy: mở trang thật bằng trình duyệt Aside, chụp ảnh, kiểm lỗi console, thời gian tải, link hỏng và so với baseline. Chỉ cảnh báo khi mẫu hình lặp lại qua 2 lần kiểm liên tiếp; luôn ở chế độ chỉ đọc.",
+  "whenToUse": "Ngay sau khi deploy để bắt lỗi trong 10 phút đầu ('canary check', 'monitor after deploy'), hoặc trước khi deploy với --baseline để chụp trạng thái chuẩn.",
+  "inputs": [
+    {
+      "name": "url",
+      "type": "url",
+      "required": true,
+      "description": "URL ứng dụng cần giám sát."
+    },
+    {
+      "name": "--duration",
+      "type": "duration",
+      "required": false,
+      "description": "Thời lượng giám sát từ 1m đến 30m, mặc định 10m."
+    },
+    {
+      "name": "--baseline",
+      "type": "flag",
+      "required": false,
+      "description": "Chụp baseline TRƯỚC khi deploy rồi dừng."
+    },
+    {
+      "name": "--pages",
+      "type": "string-list",
+      "required": false,
+      "description": "Danh sách đường dẫn, ví dụ /,/dashboard,/settings; bỏ qua thì tự khám phá."
+    },
+    {
+      "name": "--quick",
+      "type": "flag",
+      "required": false,
+      "description": "Chỉ một lượt kiểm sức khỏe, không giám sát liên tục."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Thiết lập",
+      "instructionSummary": "Tạo .gstack/canary-reports/{baselines,screenshots}; phân tích tham số, mặc định 10 phút."
+    },
+    {
+      "title": "2 Chụp baseline (--baseline)",
+      "instructionSummary": "Mỗi trang: aside repl với hook console, ghi CONSOLE_ERRORS, NAV (loadEventEnd), text snapshot, ảnh; kiểm link 404 bằng HEAD; lưu baseline.json rồi DỪNG và nhắc deploy."
+    },
+    {
+      "title": "3 Khám phá trang",
+      "instructionSummary": "Nếu không có --pages: lấy tối đa 5 link nội bộ cùng origin (loại logout/delete...), luôn gồm trang chủ; hỏi A dùng danh sách / B thêm / C chỉ trang chủ."
+    },
+    {
+      "title": "4 Snapshot trước (nếu không có baseline)",
+      "instructionSummary": "Chụp mốc tham chiếu pre-monitor.json; không bao giờ ghi đè baseline có sẵn."
+    },
+    {
+      "title": "5 Vòng giám sát",
+      "instructionSummary": "Mỗi 60 giây kiểm mọi trang bằng script mới; so với baseline: tải lỗi=CRITICAL, lỗi console mới=HIGH, tải chậm >2x=MEDIUM, 404 mới=LOW; chỉ báo khi lặp 2 lần liên tiếp; hỏi điều tra / tiếp tục / rollback / bỏ qua."
+    },
+    {
+      "title": "6 Báo cáo sức khỏe",
+      "instructionSummary": "CANARY REPORT với trạng thái HEALTHY/DEGRADED/BROKEN, bảng từng trang; lưu .md và .json, nối canary-history.jsonl."
+    },
+    {
+      "title": "7 Cập nhật baseline",
+      "instructionSummary": "Nếu deploy khỏe, hỏi cập nhật baseline bằng ảnh mới hay giữ cũ."
+    }
+  ],
+  "approvalGates": [
+    "Chọn danh sách trang cần giám sát (Bước 3)",
+    "Khi CRITICAL/HIGH xác nhận qua 2 lần liên tiếp: hỏi điều tra ngay / tiếp tục / rollback / bỏ qua (rollback do người dùng thực hiện, canary không tự revert)",
+    "Cập nhật baseline sau khi khỏe (A/B)"
+  ],
+  "outputs": [
+    "Ảnh chụp trong .gstack/canary-reports/screenshots/ và baselines/",
+    "baseline.json / pre-monitor.json",
+    "Báo cáo {date}-canary.md và .json (alerts, observations)",
+    "Dòng JSONL ở $GSTACK_STATE_ROOT/projects/<slug>/canary-history.jsonl"
+  ],
+  "dependsOn": [
+    "aside browser (aside repl)",
+    "bin/gstack-slug, gstack-paths",
+    "land-and-deploy (gọi canary một lần ở Bước 7; canary là bản mở rộng)"
+  ],
+  "modes": [
+    "monitor (mặc định)",
+    "--baseline",
+    "--quick",
+    "--duration",
+    "--pages"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "You are a release reliability engineer watching a freshly deployed site. You are strictly read-only: observe and report, never change code unless explicitly asked. Drive a real browser, installing a console-error hook before each page load, and capture console errors, navigation timing, visible text and a full-page screenshot per page. If asked for a baseline, capture it before deployment, save a manifest and stop. Otherwise discover up to five same-origin navigation links (skip logout, delete and similar), confirm the page list with the user, and monitor on a one-minute cadence for the requested duration, never overlapping rounds. Compare each check against the baseline or the monitoring-start snapshot and alert on changes, not absolutes: page load failure is critical, new console errors are high, load time above twice baseline is medium, new 404 links are low. Do not cry wolf: only alert when a pattern persists across two or more consecutive checks, and every alert must include a screenshot path. After a confirmed critical or high alert, ask the user whether to investigate, keep watching, roll back, or dismiss. Finish with a report: status HEALTHY, DEGRADED or BROKEN, per-page table, alert count, verdict. Persist the report and history, and offer to refresh the baseline only if healthy."
+}

@@ -1,0 +1,101 @@
+{
+  "name": "codex",
+  "group": "second-opinion",
+  "purposeVi": "Bọc OpenAI Codex CLI để lấy ý kiến thứ hai độc lập từ một hệ AI khác, ba chế độ: review (cổng PASS/FAIL), challenge (đối kháng, cố phá mã) và consult (hỏi tự do, có thể tiếp tục phiên). Chạy ở sandbox chỉ đọc, hiển thị nguyên văn kết quả rồi mới tổng hợp.",
+  "whenToUse": "'codex review', 'codex challenge', 'ask codex', 'second opinion', 'outside voice'. Không chạy khi harness đang là Codex (chỉ dùng từ Claude Code).",
+  "inputs": [
+    {
+      "name": "mode",
+      "type": "enum",
+      "required": false,
+      "description": "review [instructions] | challenge [focus] | consult <prompt>; trống thì tự dò theo diff/plan."
+    },
+    {
+      "name": "--xhigh",
+      "type": "flag",
+      "required": false,
+      "description": "Nâng reasoning effort lên xhigh (tốn ~23 lần token, có thể treo >50 phút)."
+    },
+    {
+      "name": "-m / --model",
+      "type": "string",
+      "required": false,
+      "description": "Mô hình chỉ định; thứ tự: yêu cầu > GSTACK_CODEX_MODEL > config.toml > mặc định."
+    },
+    {
+      "name": "auth",
+      "type": "credential",
+      "required": true,
+      "description": "CODEX_API_KEY, OPENAI_API_KEY hoặc ~/.codex/auth.json."
+    },
+    {
+      "name": ".context/codex-session-id",
+      "type": "file",
+      "required": false,
+      "description": "ID phiên consult để tiếp tục."
+    }
+  ],
+  "steps": [
+    {
+      "title": "0.4 Kiểm binary",
+      "instructionSummary": "command -v codex; thiếu thì dừng, hướng dẫn npm i -g @openai/codex."
+    },
+    {
+      "title": "0.5 Probe auth + mô hình + phiên bản",
+      "instructionSummary": "Chặn nếu harness là Codex (không bắt đầu tiến trình ngoài); gstack-codex-probe check-auth, probe-model, check-sandbox (Linux), check-version; AUTH_FAILED/MODEL_UNUSABLE/MODEL_QUOTA_EXHAUSTED/sandbox unavailable đều dừng, rate_limited/inconclusive thì tiếp với nhãn unverified."
+    },
+    {
+      "title": "0.6 Gốc di động",
+      "instructionSummary": "PLAN_ROOT và TMP_ROOT từ gstack-paths."
+    },
+    {
+      "title": "1 Phát hiện chế độ",
+      "instructionSummary": "review / challenge / consult; không đối số: có diff thì hỏi A review / B challenge / C khác, không thì xem plan file của dự án."
+    },
+    {
+      "title": "2A Review",
+      "instructionSummary": "codex review --base (không prompt kèm khi dùng scope flag); cổng FAIL-CLOSED: exit khác 0, rỗng, [P0]/[P1] => FAIL; không gắn thẻ => UNVERIFIED; chỉ P2/P3 => PASS; ghi codex-review vào review log."
+    },
+    {
+      "title": "2B Challenge",
+      "instructionSummary": "codex exec với tiền tố Filesystem Boundary (không đọc ~/.claude, skills...), prompt đối kháng trên diff, hạn 540s."
+    },
+    {
+      "title": "2C Consult",
+      "instructionSummary": "Hỏi tiếp tục phiên cũ hay mới; codex exec (resume tùy chọn), effort medium; lưu SESSION_ID."
+    },
+    {
+      "title": "Tổng hợp bắt buộc",
+      "instructionSummary": "In nguyên văn trong khối CODEX SAYS rồi MỘT dòng 'Recommendation: <hành động> because <lý do nêu phát hiện cụ thể>'; báo token; cảnh báo nếu Codex lạc vào đọc tệp skill."
+    }
+  ],
+  "approvalGates": [
+    "Không có diff: chọn review/challenge/prompt khác",
+    "Consult: tiếp tục phiên đã lưu hay bắt đầu mới",
+    "Cổng FAIL (có phát hiện P0/P1) hiển thị cho người dùng; quyết định sửa là của người dùng",
+    "Lỗi auth, mô hình không dùng được, hết hạn mức, sandbox không chạy: dừng và hướng dẫn sửa",
+    "Không bao giờ tự động quyết định thay người dùng; luôn xuất dòng Recommendation"
+  ],
+  "outputs": [
+    "Kết quả Codex nguyên văn (khối CODEX SAYS) + GATE: PASS/FAIL/UNVERIFIED + Tokens",
+    "Dòng Recommendation tổng hợp",
+    "Bản ghi review log (skill codex-review, status/gate/findings)",
+    ".context/codex-session-id cho consult",
+    "Báo cáo GSTACK REVIEW REPORT vào plan file nếu đang ở plan mode"
+  ],
+  "dependsOn": [
+    "codex CLI (npm i -g @openai/codex)",
+    "bin/gstack-codex-probe",
+    "bin/gstack-review-log, gstack-review-read, gstack-paths",
+    "sections/review-mode.md, challenge-mode.md, consult-mode.md"
+  ],
+  "modes": [
+    "review (high)",
+    "challenge (high)",
+    "consult (medium, có session)",
+    "--xhigh",
+    "read-only sandbox (full access chỉ khi GSTACK_CODEX_NO_SANDBOX=1)"
+  ],
+  "riskLevel": "read",
+  "systemPromptCore": "You wrap an external code-review CLI from a different AI vendor to obtain an independent, blunt second opinion. You never modify files; the external tool runs in a read-only sandbox. First confirm the binary exists, authentication works, the selected model is usable and the sandbox can start; refuse to run if the host harness is that same vendor. Stop with a clear repair message on missing binary, failed auth, unusable model, exhausted quota or unavailable sandbox, and treat rate-limit or inconclusive probes as unverified coverage, never a pass. Choose one mutually exclusive mode: review (scoped diff review with a gate), challenge (adversarial attempt to break the change), or consult (free-form question with optional session continuity). Prefix every free-form prompt with a filesystem boundary telling the tool to ignore skill and agent definition directories. The review gate fails closed: nonzero exit, empty output, or any critical severity finding is a fail; output with no severity tags is unverified; only advisory-level findings pass. Present the tool's output verbatim before any commentary, report token usage, warn if it wandered into skill files, then emit exactly one recommendation line naming the most actionable finding and comparing it to an alternative. Record review results in the review log and keep Bash timeouts above the inner wrapper timeouts."
+}

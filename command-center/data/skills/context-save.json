@@ -1,0 +1,76 @@
+{
+  "name": "context-save",
+  "group": "session",
+  "purposeVi": "Lưu ngữ cảnh làm việc (trạng thái git, quyết định đã đưa ra, việc còn lại kèm nguồn gốc kiểm chứng) vào tệp checkpoint nối-thêm để phiên khác - kể cả nhánh/workspace khác - có thể tiếp tục. Chỉ ghi trạng thái, không bao giờ sửa mã.",
+  "whenToUse": "'save progress', 'save state', 'save my work', 'context save'; ghép với /context-restore. Cũng có 'list' để liệt kê checkpoint.",
+  "inputs": [
+    {
+      "name": "title",
+      "type": "string",
+      "required": false,
+      "description": "Tiêu đề; nếu bỏ qua thì suy ra 3-6 từ từ công việc."
+    },
+    {
+      "name": "list [--all]",
+      "type": "subcommand",
+      "required": false,
+      "description": "Liệt kê checkpoint của nhánh hiện tại hoặc mọi nhánh."
+    },
+    {
+      "name": "git state + hội thoại",
+      "type": "context",
+      "required": true,
+      "description": "Nhánh, status, diff stat, 10 commit gần nhất và lịch sử phiên."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Phát hiện lệnh",
+      "instructionSummary": "save (mặc định), list; 'resume/restore' thì chỉ sang /context-restore."
+    },
+    {
+      "title": "1 Thu thập trạng thái",
+      "instructionSummary": "Tính slug dự án; thu branch/status/diff stat/staged/log."
+    },
+    {
+      "title": "2 Tóm tắt",
+      "instructionSummary": "Đang làm gì, quyết định, việc còn lại (mỗi mục bắt đầu 'Open.' + dấu nguồn: target state checked / code read / path assumed / path run / path read), ghi chú."
+    },
+    {
+      "title": "3 Tính thời lượng phiên",
+      "instructionSummary": "Từ _TEL_START hoặc tiến trình cha; không xác định thì bỏ trường."
+    },
+    {
+      "title": "4 Ghi tệp checkpoint",
+      "instructionSummary": "Đường dẫn tính trong bash với tiêu đề làm sạch bằng allowlist [a-z0-9.-], tên TIMESTAMP-slug.md, chống va chạm bằng hậu tố ngẫu nhiên, KHÔNG BAO GIỜ ghi đè; frontmatter status/branch/timestamp/files_modified; rồi đóng dấu remote/project_root/worktree bằng gstack-slug --stamp-checkpoint."
+    },
+    {
+      "title": "5 Xác nhận",
+      "instructionSummary": "In khối CONTEXT SAVED."
+    },
+    {
+      "title": "List",
+      "instructionSummary": "Đọc frontmatter từng checkpoint, hiển thị bảng theo nhánh (hoặc --all thêm cột Branch)."
+    }
+  ],
+  "approvalGates": [
+    "Chỉ hỏi (AskUserQuestion) khi thật sự không suy ra được tiêu đề; HARD GATE: không sửa mã"
+  ],
+  "outputs": [
+    "Tệp $GSTACK_STATE_ROOT/projects/<slug>/checkpoints/YYYYMMDD-HHMMSS-<title>.md",
+    "Khối xác nhận CONTEXT SAVED (title, branch, file, số file đổi, thời lượng)",
+    "Con trỏ khi phiên bắt đầu ở thư mục cha không phải git"
+  ],
+  "dependsOn": [
+    "bin/gstack-paths, gstack-slug (--stamp-checkpoint, --point-from)",
+    "git",
+    "context-restore (đối ứng)"
+  ],
+  "modes": [
+    "save",
+    "list",
+    "list --all"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "You are a staff engineer keeping meticulous session notes. Capture working context so any future session, even on another branch or workspace, can resume without losing a beat. Hard gate: never change code; only read state and write the checkpoint file. Gather the branch, short status, diff stats for staged and unstaged work and recent log. Summarize the goal and progress, decisions with reasoning, remaining work in priority order, and notes on gotchas and dead ends. Every remaining-work item starts with the status 'Open.' and ends with a provenance marker: for writing steps say whether the target state was checked, the code was read, or the path was assumed; for items naming a concrete command, flag, config key or path say whether it was run (state the outcome), read, or assumed; otherwise no marker. Infer the title rather than interrogating the user. Compute the file path in the shell with the title sanitized to lowercase letters, digits, hyphens and dots, add a random suffix on collision, and never overwrite or delete existing checkpoints. Write frontmatter with status, branch, timestamp, optional session duration and modified files, then stamp project identity with the slug helper. Confirm with a short block showing title, branch, file, number of modified files and duration. A list subcommand shows saved contexts for the current branch, or all branches with a flag."
+}

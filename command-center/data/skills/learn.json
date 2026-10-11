@@ -1,0 +1,72 @@
+{
+  "name": "learn",
+  "group": "session",
+  "purposeVi": "Quản lý kho 'learnings' mà gstack tích lũy theo dự án: xem gần đây, tìm kiếm, dọn (phát hiện lỗi thời/mâu thuẫn), xuất markdown cho CLAUDE.md, thống kê và thêm thủ công. Không sửa mã.",
+  "whenToUse": "'what have we learned', 'show learnings', 'prune stale learnings', 'export learnings'; chủ động gợi ý khi người dùng hỏi về pattern cũ.",
+  "inputs": [
+    {
+      "name": "subcommand",
+      "type": "enum",
+      "required": false,
+      "description": "(trống)=show recent | search <query> | prune | export | stats | add."
+    },
+    {
+      "name": "learnings.jsonl",
+      "type": "file",
+      "required": true,
+      "description": "$GSTACK_STATE_ROOT/projects/<slug>/learnings.jsonl, append-only, mục mới nhất theo key+type thắng."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Show recent",
+      "instructionSummary": "gstack-learnings-search --limit 20, nhóm theo loại; nếu rỗng giải thích learnings tự động được ghi từ /review, /ship, /investigate."
+    },
+    {
+      "title": "Search",
+      "instructionSummary": "gstack-learnings-search --query với từ khóa của người dùng."
+    },
+    {
+      "title": "Prune",
+      "instructionSummary": "Lấy tối đa 100; dùng Glob kiểm tệp được tham chiếu còn tồn tại (STALE) và tìm key trùng nhưng insight trái ngược (CONFLICT); hỏi từng mục: xóa / giữ / cập nhật (cập nhật = nối mục mới, xóa = bỏ dòng khớp khỏi jsonl)."
+    },
+    {
+      "title": "Export",
+      "instructionSummary": "Định dạng markdown 'Project Learnings' nhóm Patterns/Pitfalls/Preferences/Architecture kèm độ tin cậy; hỏi nối vào CLAUDE.md hay lưu tệp riêng."
+    },
+    {
+      "title": "Stats",
+      "instructionSummary": "Tổng, duy nhất sau dedup, theo loại, theo nguồn, độ tin cậy trung bình."
+    },
+    {
+      "title": "Manual add",
+      "instructionSummary": "Hỏi loại, key kebab-case 2-5 từ, insight một câu, độ tin cậy 1-10, tệp liên quan; ghi bằng gstack-learnings-log với source user-stated."
+    }
+  ],
+  "approvalGates": [
+    "Prune: mỗi mục STALE/CONFLICT hỏi A xóa / B giữ / C cập nhật",
+    "Export: hỏi có nối vào CLAUDE.md không",
+    "HARD GATE: chỉ quản lý learnings, không sửa mã"
+  ],
+  "outputs": [
+    "Danh sách/bảng learnings trong hội thoại",
+    "learnings.jsonl đã dọn hoặc có mục mới",
+    "Đoạn markdown xuất (tùy chọn nối vào CLAUDE.md)",
+    "Bảng thống kê"
+  ],
+  "dependsOn": [
+    "bin/gstack-learnings-search, gstack-learnings-log",
+    "bin/gstack-slug, gstack-paths",
+    "bun (cho stats)"
+  ],
+  "modes": [
+    "show",
+    "search",
+    "prune",
+    "export",
+    "stats",
+    "add"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "You are the staff engineer who maintains the team wiki. Manage the project's accumulated learnings only; never implement code changes. Parse the subcommand: no argument shows the twenty most recent learnings grouped by type; search runs a keyword query; prune reviews up to a hundred entries; export formats a markdown section; stats prints totals; add records a manual entry. When pruning, check each entry's referenced files with a file search and flag those whose files were deleted as stale, and flag entries sharing a key but with contradicting insights as conflicts. Present each flagged entry and ask the user to remove, keep, or update it; update by appending a corrected entry (the store is append-only and the latest entry wins), and remove by deleting only the matching line. For export, group entries as patterns, pitfalls, preferences and architecture with confidence scores, then ask whether to append the result to the project instructions file or save it separately. For stats, deduplicate by key and type keeping the newest, and report unique count, raw count, breakdown by type and source, and average confidence. For manual add, collect type, a two-to-five word kebab-case key, a one-sentence insight, confidence from one to ten and optional related files, and log it with source user-stated. If there are no learnings, explain that review, ship and investigation workflows record them automatically."
+}

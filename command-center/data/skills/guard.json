@@ -1,0 +1,58 @@
+{
+  "name": "guard",
+  "group": "safety",
+  "purposeVi": "Chế độ an toàn đầy đủ = /careful + /freeze trong một lệnh: cảnh báo lệnh phá hủy (có hai dạng deny cứng) cộng với khóa chỉnh sửa vào một thư mục do người dùng chọn.",
+  "whenToUse": "Khi cần mức bảo vệ tối đa: 'full safety mode', 'guard against mistakes', 'maximum safety', ví dụ làm việc trên production với phạm vi nhỏ.",
+  "inputs": [
+    {
+      "name": "directory",
+      "type": "path",
+      "required": true,
+      "description": "Thư mục được phép sửa (nhập tay)."
+    },
+    {
+      "name": "careful + freeze skills",
+      "type": "install",
+      "required": true,
+      "description": "Cả hai phải được cài; guard tham chiếu script hook của chúng."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Hỏi thư mục",
+      "instructionSummary": "AskUserQuestion nhập văn bản; cảnh báo lệnh phá hủy luôn bật."
+    },
+    {
+      "title": "2 Ghi ranh giới",
+      "instructionSummary": "freeze-state.sh set <path>; nếu lỗi thì không tuyên bố ranh giới đã bật, không bypass script."
+    },
+    {
+      "title": "3 Thông báo",
+      "instructionSummary": "Hai lớp bảo vệ: (1) bộ chặn lệnh phá hủy, (2) ranh giới chỉnh sửa; /unfreeze gỡ ranh giới bền, kết thúc phiên chỉ dừng hook."
+    },
+    {
+      "title": "Thực thi",
+      "instructionSummary": "Frontmatter đăng ký cả check-careful.sh (Bash, PowerShell) và check-freeze.sh (Edit, Write, NotebookEdit)."
+    }
+  ],
+  "approvalGates": [
+    "Chọn thư mục ranh giới",
+    "Cảnh báo lệnh phá hủy: người dùng duyệt từng lệnh MEDIUM; HIGH bị deny",
+    "Sửa ngoài ranh giới: deny, chỉ /unfreeze mới nới"
+  ],
+  "outputs": [
+    "Tệp freeze-dir.txt",
+    "Hook careful + freeze đang hoạt động cho phiên",
+    "Thông báo trạng thái hai lớp bảo vệ"
+  ],
+  "dependsOn": [
+    "careful",
+    "freeze",
+    "unfreeze"
+  ],
+  "modes": [
+    "careful + freeze kết hợp"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "Full safety mode combines two protections. First, ask the user which directory edits should be restricted to, as typed text, and set the boundary only via the shared freeze state-writer; if it fails, do not claim the boundary is active and do not bypass the writer. Second, destructive-command warnings are always on. Tell the user exactly what is running: (1) every shell command is screened and recursive deletes, database drops and truncates, force-pushes, hard resets, discards of working-tree changes, cluster resource deletes and container prunes prompt for approval, while recursive deletion of the filesystem root or home directory and force-pushing the default branch are hard-denied; (2) edits, writes and notebook edits outside the chosen directory are blocked outright. Removing the persistent edit boundary requires the unfreeze command; ending the session stops the hooks but leaves the boundary file. Respect both guards: never route around a block with shell commands, never rewrite a destructive command to dodge the screen, and when blocked explain the reason and ask the user whether to widen the boundary or proceed."
+}

@@ -1,0 +1,48 @@
+{
+  "name": "setup-gbrain",
+  "group": "memory",
+  "purposeVi": "Cài đặt gbrain (cơ sở tri thức bền) cho tác tử lập trình: cài CLI, khởi tạo bộ não PGLite cục bộ hoặc Supabase hoặc MCP từ xa, đăng ký MCP, ghi chính sách tin cậy theo từng remote.",
+  "whenToUse": [
+    "'setup gbrain', 'install gbrain', 'connect gbrain', 'configure gbrain for this machine'",
+    "Muốn từ số 0 tới 'gbrain đang chạy và agent gọi được'"
+  ],
+  "inputs": [
+    "chế độ: toàn bộ | --repo | --switch | --resume-provision <ref> | --cleanup-orphans",
+    "lựa chọn nơi đặt bộ não (Supabase có chuỗi kết nối / tự cấp phát / thủ công / PGLite / MCP từ xa)",
+    "chính sách repo: read-write | read-only | deny",
+    "đồng ý đồng bộ artifacts và ingest transcript"
+  ],
+  "steps": [
+    "Phát hiện trạng thái hiện có (CLI, cấu hình, engine, doctor, chế độ MCP) và bỏ qua phần đã xong",
+    "Khắc phục engine cục bộ hỏng (broken-db/config) trước khi đi tiếp; timeout/db-unreachable/thin-client được coi là ổn",
+    "Hỏi nơi đặt bộ não (không tự chọn)",
+    "Cài CLI gbrain nếu thiếu (dừng nếu PATH bị che)",
+    "Khởi tạo theo đường đã chọn; chạy gbrain doctor, dừng nếu không ok/warnings",
+    "Đăng ký MCP với Claude Code ở user scope (HTTP+bearer cho từ xa, stdio đường dẫn tuyệt đối cho cục bộ); nhắc khởi động lại phiên",
+    "Chính sách theo remote của repo; chỉ import khi read-write",
+    "Đề nghị đồng bộ artifacts sang repo git riêng tư; in lệnh để quản trị bộ não tự chạy",
+    "Cổng đồng ý ingest transcript; ghi khối cấu hình vào CLAUDE.md; smoke test; chính sách tin cậy cho endpoint"
+  ],
+  "approvalGates": [
+    "Chọn nơi đặt bộ não: luôn hỏi",
+    "Đăng ký MCP: hỏi trước",
+    "Chính sách repo chưa đặt: hỏi (read-write/read-only/deny/bỏ qua)",
+    "Đồng bộ artifacts và ingest transcript: đồng ý riêng, tách bạch",
+    "Không tự chạy lệnh phía máy chủ gbrain; token/chuỗi kết nối không in ra chat"
+  ],
+  "outputs": [
+    "gbrain chạy được + MCP đã đăng ký",
+    "Khối '## GBrain Configuration' trong CLAUDE.md",
+    "Chính sách repo và endpoint đã lưu",
+    "Kết quả smoke test"
+  ],
+  "dependsOn": [
+    "bin/gstack-gbrain-detect, -install, -repo-policy, -source-wireup",
+    "gbrain CLI (bun)",
+    "claude mcp",
+    "Supabase (tùy chọn)",
+    "gstack-config"
+  ],
+  "riskLevel": "high",
+  "systemPromptCore": "You onboard a coding agent to a persistent knowledge base (gbrain). Always begin by detecting current state and skip whatever is already done; report what you found in one line. Never silently pick where the brain lives: ask the user to choose between an existing cloud database string, an auto-provisioned or manual cloud project, a zero-account local embedded database, or a remote MCP endpoint, and warn about the trust surface of pasting a shared connection string. Treat a slow, unreachable or thin-client state as healthy and never move a user's config aside for network errors; repair genuinely broken local engines first. Install the CLI only when missing and stop with the full output if PATH shadowing is detected. Verify health before registering the tool server at user scope with an absolute binary path, and remind the user to restart sessions. Ask per-repository trust (read-write, read-only, deny) and import only on read-write. Offer artifact sync and transcript ingestion as separate, explicit consents. Secrets such as tokens and connection strings must never be echoed. Persist the configuration in project instructions and finish with a round-trip smoke test; stop and escalate on failure."
+}

@@ -1,0 +1,163 @@
+{
+  "name": "ship",
+  "group": "ship-pipeline",
+  "purposeVi": "Quy trình phát hành tự động từ nhánh tính năng: gộp nhánh nền, chạy kiểm thử, review diff, nâng VERSION, viết CHANGELOG, commit, push và tạo/cập nhật PR. Mọi lần gọi đều chạy lại toàn bộ kiểm chứng, không dùng lại bằng chứng cũ.",
+  "whenToUse": "Khi người dùng nói code đã sẵn sàng: 'ship it', 'tạo PR', 'push lên main', 'deploy cái này'. Phải chạy từ nhánh tính năng, không chạy trên nhánh nền/mặc định.",
+  "inputs": [
+    {
+      "name": "branch",
+      "type": "git-state",
+      "required": true,
+      "description": "Nhánh hiện tại (tự phát hiện); bị chặn nếu là nhánh nền."
+    },
+    {
+      "name": "baseBranch",
+      "type": "string",
+      "required": false,
+      "description": "Nhánh đích của PR, tự dò qua gh/glab hoặc origin/HEAD, mặc định main."
+    },
+    {
+      "name": "uncommittedChanges",
+      "type": "git-state",
+      "required": false,
+      "description": "Thay đổi chưa commit luôn được đưa vào, không hỏi."
+    },
+    {
+      "name": "CLAUDE.md Test Coverage",
+      "type": "config",
+      "required": false,
+      "description": "Mục '## Test Coverage' với Minimum (60%) / Target (80%) / Generation cap."
+    },
+    {
+      "name": "plan file",
+      "type": "file",
+      "required": false,
+      "description": "Kế hoạch dùng để kiểm hoàn thành & lệch phạm vi (Bước 8)."
+    }
+  ],
+  "steps": [
+    {
+      "title": "0 Phát hiện nền tảng + nhánh nền",
+      "instructionSummary": "Đọc remote để biết GitHub/GitLab, xác định base branch bằng gh pr view / repo view / origin HEAD, rơi về main."
+    },
+    {
+      "title": "0.9 Dò mục tiêu Apple",
+      "instructionSummary": "Nếu yêu cầu phân phối App Store/TestFlight thì chuyển sang sections/apple-release; còn lại đi pipeline hạ cánh repo."
+    },
+    {
+      "title": "1 Pre-flight",
+      "instructionSummary": "Hủy nếu đang ở nhánh nền; git status; bắt buộc git fetch origin <base>; hiển thị Review Readiness Dashboard (chỉ thông tin, không thay thế Bước 9)."
+    },
+    {
+      "title": "2 Kiểm tra pipeline phân phối",
+      "instructionSummary": "Nếu diff thêm binary/package mới mà thiếu workflow release thì hỏi: thêm workflow / hoãn thành TODO P1 / không cần."
+    },
+    {
+      "title": "3 Merge nhánh nền trước khi test",
+      "instructionSummary": "git merge origin/<base>; tự giải quyết xung đột đơn giản (VERSION, CHANGELOG); xung đột phức tạp thì DỪNG và hỏi."
+    },
+    {
+      "title": "4-6 Bootstrap test, chạy test, eval",
+      "instructionSummary": "Dò/hỏi khung test, chạy bộ test trên code đã merge, phân loại lỗi (của nhánh thì dừng; có sẵn từ trước thì hỏi sửa/TODO/gán/bỏ qua), chạy eval nếu đổi prompt."
+    },
+    {
+      "title": "6.5 PR Greptile sớm",
+      "instructionSummary": "Sau khi test miễn phí qua, có thể mở PR draft sớm để Greptile review song song; PR này không bao giờ bị đóng."
+    },
+    {
+      "title": "7 Kiểm độ phủ test",
+      "instructionSummary": "Truy vết codepath của diff, chấm sao test, sinh test cho khoảng trống; cổng Minimum/Target hỏi người dùng nếu dưới ngưỡng."
+    },
+    {
+      "title": "8 Hoàn thành kế hoạch + lệch phạm vi",
+      "instructionSummary": "Đối chiếu từng hạng mục kế hoạch với diff (DONE/NOT DONE/UNVERIFIABLE); mục NOT DONE bắt buộc hỏi; xác nhận từng mục không kiểm chứng được."
+    },
+    {
+      "title": "9 Review trước khi hạ cánh",
+      "instructionSummary": "Checklist lõi + design-lite + Review Army (specialist song song, red team), merge phát hiện, Fix-First, giới hạn 3 vòng sửa; ghi review log bằng start token."
+    },
+    {
+      "title": "10 Greptile",
+      "instructionSummary": "Xử lý bình luận Greptile nếu đã có PR."
+    },
+    {
+      "title": "11 Adversarial review (luôn bật)",
+      "instructionSummary": "Subagent Claude luôn chạy; Codex challenge/structured review (diff >=200 dòng) nếu có; cổng P1 FAIL thì hỏi; tổng hợp chéo mô hình."
+    },
+    {
+      "title": "11.5 Gắn review với nội dung",
+      "instructionSummary": "So khớp wtree của review Bước 9 và Bước 11; lệch hoặc thiếu thì quay lại 9->11."
+    },
+    {
+      "title": "12 Nâng VERSION",
+      "instructionSummary": "gstack-version-bump classify (FRESH/ALREADY_BUMPED/DRIFT/NO_VERSION); chọn MICRO/PATCH tự động, MINOR/MAJOR phải hỏi; gstack-next-version chọn slot theo hàng đợi PR; ghi bằng version-bump write."
+    },
+    {
+      "title": "13 CHANGELOG",
+      "instructionSummary": "Liệt kê mọi commit, nhóm theo chủ đề, viết mục [X.Y.Z.W] hướng người dùng, đối chiếu chéo với danh sách commit; không hỏi người dùng."
+    },
+    {
+      "title": "14 TODOS.md",
+      "instructionSummary": "Thêm deferral đã duyệt, đánh dấu hoàn thành TODO đã chứng minh; ghi lỗi không chặn."
+    },
+    {
+      "title": "14.5 Kiểm tài liệu (mọi lần ship)",
+      "instructionSummary": "Dispatch subagent /document-release (spawned, giới hạn quyền); tối đa ban đầu + 1 lần thử lại; kết quả blocked thì dừng hoặc người dùng chấp nhận rủi ro có tên."
+    },
+    {
+      "title": "15 Commit bisectable",
+      "instructionSummary": "Nhóm commit theo phụ thuộc, VERSION+CHANGELOG+TODOS ở commit cuối kèm Co-Authored-By; không tag, không commit rỗng."
+    },
+    {
+      "title": "16 Cổng xác minh",
+      "instructionSummary": "IRON LAW: không tuyên bố hoàn thành nếu thiếu bằng chứng mới. Build, so wtree với cây đã review, gstack-evidence check/run cho từng lane test; nếu hành vi đổi thì quay lại 5-11.5."
+    },
+    {
+      "title": "17 Push",
+      "instructionSummary": "Guard credential pre-push (gstack-redact), kiểm tra idempotent ALREADY_PUSHED, git push -u; không bao giờ force push; non-fast-forward thì merge rồi chạy lại 5-16."
+    },
+    {
+      "title": "18-19 Tạo/cập nhật PR",
+      "instructionSummary": "Tra PR mở của nhánh; tiêu đề phải bắt đầu bằng vVERSION; thân PR đủ mục (Summary, Test Coverage, Review, QA, Plan Completion, Documentation...); gstack-post quét bí mật: HIGH chặn, MEDIUM hỏi."
+    },
+    {
+      "title": "20-21 Ghi số liệu + nudge",
+      "instructionSummary": "gstack-review-log ghi metrics cho /retro; nhắc /plan-tune một lần."
+    }
+  ],
+  "approvalGates": [
+    "Chọn bump MINOR/MAJOR (AskUserQuestion; hủy dừng trước mọi ghi release)",
+    "Xung đột merge phức tạp",
+    "Artifact mới thiếu pipeline phân phối",
+    "Lỗi test có sẵn từ trước (sửa/TODO/gán/bỏ qua) - lỗi do nhánh thì DỪNG cứng",
+    "Cổng độ phủ test dưới Target hoặc dưới Minimum",
+    "Hạng mục kế hoạch NOT DONE hoặc UNVERIFIABLE (xác nhận từng mục)",
+    "Phát hiện NEEDS INPUT từ review; cổng Codex P1 FAIL",
+    "Kiểm tài liệu bị blocked: chỉ tiếp tục khi người dùng chấp nhận rủi ro có tên",
+    "Quét bí mật khi tạo PR: HIGH chặn cứng, MEDIUM hỏi từng phát hiện",
+    "Cài hook pre-push credential (hỏi một lần duy nhất)"
+  ],
+  "outputs": [
+    "Commit bisectable + commit VERSION/CHANGELOG/TODOS",
+    "Nhánh đã push, PR/MR URL với tiêu đề có tiền tố vX.Y.Z.W",
+    "Mục CHANGELOG, VERSION/package.json mới",
+    "Review log, evidence ledger, ship metrics trong ~/.gstack",
+    "Trạng thái DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT"
+  ],
+  "dependsOn": [
+    "review checklist",
+    "document-release (subagent)",
+    "codex hoặc claude-code (adversarial, tùy chọn)",
+    "gh/glab",
+    "bun",
+    "bin/gstack-version-bump, gstack-next-version, gstack-ci-gate, gstack-evidence, gstack-wtree, gstack-review-log, gstack-post, gstack-redact"
+  ],
+  "modes": [
+    "interactive",
+    "spawned (tự chọn phương án khuyến nghị, không bao giờ chọn phương án phá hủy)",
+    "headless (BLOCKED nếu không hỏi được)",
+    "Conductor (hỏi bằng văn bản)"
+  ],
+  "riskLevel": "write-remote",
+  "systemPromptCore": "You are the release engineer running the ship workflow on a feature branch. Never run on the base branch and never force-push. Work in a fixed order: detect platform and base branch, fetch and merge the base, run tests on the merged code, audit coverage, audit plan completion, run the pre-landing review and an always-on adversarial pass, bind both reviews to the exact working-tree content, bump the version through the version tool, write the changelog from the full commit list, update TODOs, run a documentation audit through a restricted subagent, commit in bisectable chunks, verify, push, then create or update the pull request. Keep an invocation record so a paused run can resume. Every invocation repeats all verification; earlier approvals only apply to the same scope. Treat green evidence as valid only when its command, content fingerprint and age match; if behavior, tests or build inputs changed after review, loop back to testing and review. Ask the user for minor/major bumps, complex conflicts, pre-existing test failures, low coverage, missing plan items, risky documentation findings and medium-severity secret findings. Block on high-severity secrets, in-branch test failures and unverifiable documentation. The PR title must start with the version. Never claim a PR exists unless it was created. Report a final status of DONE, DONE_WITH_CONCERNS, BLOCKED or NEEDS_CONTEXT with evidence."
+}

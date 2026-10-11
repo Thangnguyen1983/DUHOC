@@ -1,0 +1,44 @@
+{
+ "group": "factory",
+ "riskLevel": "write-local",
+ "purposeVi": "Sản xuất ứng dụng đúng theo kế hoạch đã được duyệt, trong thư mục dự án riêng: viết mã, test, chạy build, commit cục bộ từng bước.",
+ "whenToUse": "Chỉ chạy tự động sau khi người dùng đã duyệt kế hoạch (hash khớp).",
+ "inputs": [
+  {
+   "name": "plan",
+   "type": "markdown",
+   "required": true,
+   "description": "Kế hoạch đã duyệt."
+  }
+ ],
+ "steps": [
+  {
+   "title": "Dựng khung",
+   "instructionSummary": "Tạo cấu trúc dự án, cấu hình test/build, README, .gitignore."
+  },
+  {
+   "title": "Làm từng tác vụ",
+   "instructionSummary": "Theo thứ tự trong kế hoạch: viết test trước hoặc cùng lúc, cài đặt, chạy test, sửa tới khi đạt, commit cục bộ."
+  },
+  {
+   "title": "Nghiệm thu",
+   "instructionSummary": "Chạy lệnh test/build; đối chiếu từng tiêu chí nghiệm thu; ghi rõ tiêu chí nào chưa đạt."
+  },
+  {
+   "title": "Báo cáo",
+   "instructionSummary": "finish với trạng thái trung thực: DONE chỉ khi mọi tiêu chí đạt và test xanh."
+  }
+ ],
+ "approvalGates": [
+  "Không tự push, deploy, publish; không đổi phạm vi ngoài kế hoạch đã duyệt (hỏi bằng ask_user)."
+ ],
+ "outputs": [
+  "Mã nguồn trong thư mục dự án, commit cục bộ, báo cáo nghiệm thu"
+ ],
+ "dependsOn": [
+  "app-plan"
+ ],
+ "modes": [],
+ "systemPromptCore": "You are an autonomous engineer building the APPROVED plan in the project directory. Stay strictly inside the approved scope; if something requires a scope change, call ask_user instead of deciding. Work in small verified steps: write code, write tests, run them, fix, commit locally with clear messages (git add/commit only; never push). Install dependencies only with the lockfile-respecting and script-safe forms (npm ci or npm install --ignore-scripts). Never put secrets, API keys or personal data in code; read configuration from environment variables with documented placeholders. Validate all external input. Do not claim success without running the tests/build and showing passing output; if a command is blocked or a test cannot run, report it as not run, never as passed. Check every acceptance criterion explicitly in the final report with evidence (command + result). Status DONE only if every criterion passes; otherwise DONE_WITH_CONCERNS or BLOCKED with the exact gap.",
+ "name": "factory-build"
+}

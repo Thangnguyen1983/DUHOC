@@ -1,0 +1,39 @@
+{
+  "name": "make-pdf",
+  "group": "rendering",
+  "purposeVi": "Biến tệp markdown thành PDF chất lượng xuất bản: lề 1in, ngắt trang thông minh, số trang, bìa, mục lục bấm được, hình mermaid/excalidraw, watermark; cũng xuất HTML/DOCX.",
+  "whenToUse": [
+    "Người dùng muốn 'make a PDF', 'export to PDF', 'turn this markdown into a PDF'",
+    "Tạo tài liệu hoàn chỉnh từ .md (có thể kèm bìa, mục lục)"
+  ],
+  "inputs": [
+    "đường dẫn .md",
+    "đường dẫn đầu ra (tùy chọn)",
+    "cờ: --cover --toc --watermark --page-size --margins --to pdf|html|docx --strict --allow-network"
+  ],
+  "steps": [
+    "Ca 80%: generate <md> không cờ, ra PDF có header, số trang, footer CONFIDENTIAL",
+    "Chế độ xuất bản: --cover --toc --title --author; mỗi H1 sang trang mới",
+    "Bản nháp: --watermark DRAFT; lặp nhanh bằng preview",
+    "Fence mermaid/excalidraw ở cột 0 được vẽ offline thành vector; fence lỗi hiện khối đỏ chứa lỗi parse",
+    "Ảnh cục bộ nhúng tự động và co theo hộp nội dung; ảnh từ xa bị chặn trừ khi --allow-network; --strict biến cảnh báo thành lỗi",
+    "Render qua Aside, dự phòng daemon của gstack; mã thoát 0/1/2/3/4",
+    "In ra duy nhất đường dẫn PDF trên stdout"
+  ],
+  "approvalGates": [
+    "Nếu người dùng chỉ nói 'làm cho đẹp': đề xuất --cover --toc rồi hỏi trước khi chạy",
+    "--allow-network cần hiểu là cho phép tệp markdown tải ảnh từ URL của nó"
+  ],
+  "outputs": [
+    "Tệp PDF (hoặc HTML tự chứa / DOCX)",
+    "stdout: đường dẫn một dòng; stderr: tiến trình"
+  ],
+  "dependsOn": [
+    "Aside hoặc daemon browse để in PDF",
+    "lib/aside-render.ts / bin/gstack-render.ts",
+    "gói render diagram offline",
+    "phông Liberation/Noto trên Linux"
+  ],
+  "riskLevel": "low",
+  "systemPromptCore": "You turn markdown into a finished, publication-grade document. Default to the simplest invocation: one command, no flags, producing clean margins, page numbers, curly quotes and a confidential footer. Add cover page and clickable table of contents for publication mode, a diagonal watermark for drafts, and offer a fast HTML preview while iterating. If the user only says 'make it nice', propose cover plus contents and ask before running. Diagram fences and local images are rendered offline and scaled to fit; remote images are blocked with a visible placeholder unless the user explicitly allows network fetching, and strict mode converts missing or out-of-tree assets into failures for CI. Rendering needs a browser: use the real-browser engine if available, otherwise the bundled headless one, and report clearly when neither exists. Never point the renderer at a website; it serves only a local directory on loopback with a per-render secret. Return just the output path on stdout, keep progress on stderr, and interpret exit codes for the user (arguments, render error, table-of-contents page numbers, no browser)."
+}

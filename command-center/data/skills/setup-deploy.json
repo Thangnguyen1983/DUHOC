@@ -1,0 +1,79 @@
+{
+  "name": "setup-deploy",
+  "group": "ship-pipeline",
+  "purposeVi": "Dò nền tảng deploy (Fly, Render, Vercel, Netlify, Heroku, Railway, GitHub Actions), URL sản xuất, kiểm tra sức khỏe và lệnh trạng thái, rồi lưu vào mục '## Deploy Configuration' của CLAUDE.md để /land-and-deploy dùng lại, không phải dò lần nữa.",
+  "whenToUse": "Trước lần /land-and-deploy đầu tiên hoặc khi cách deploy đổi: 'configure deploy', 'setup deployment', 'set deploy platform'.",
+  "inputs": [
+    {
+      "name": "CLAUDE.md",
+      "type": "file",
+      "required": false,
+      "description": "Đọc/ghi mục Deploy Configuration."
+    },
+    {
+      "name": "platform files",
+      "type": "file",
+      "required": false,
+      "description": "fly.toml, render.yaml, vercel.json, netlify.toml, Procfile, railway.*, .github/workflows/*."
+    },
+    {
+      "name": "production URL",
+      "type": "url",
+      "required": false,
+      "description": "Hỏi người dùng xác nhận, không suy ra từ tên repo."
+    },
+    {
+      "name": "merge method",
+      "type": "enum",
+      "required": false,
+      "description": "squash/merge/rebase, chỉ đưa ra các cách repo cho phép."
+    }
+  ],
+  "steps": [
+    {
+      "title": "1 Kiểm cấu hình hiện có",
+      "instructionSummary": "grep '## Deploy Configuration'; nếu đã có thì hỏi cấu hình lại / sửa trường / xong."
+    },
+    {
+      "title": "2 Dò nền tảng",
+      "instructionSummary": "Dò file nền tảng, workflow deploy, loại dự án (CLI/library)."
+    },
+    {
+      "title": "3 Thiết lập theo nền tảng",
+      "instructionSummary": "Fly/Render/Vercel/Netlify: lấy tên app, kiểm CLI, suy ra URL và xác nhận; Heroku/Railway/Actions/thủ công: hỏi cách kích hoạt deploy, URL, cách kiểm trạng thái, hook trước/sau merge. Nhiều nền tảng thì hỏi cái nào là production."
+    },
+    {
+      "title": "4 Ghi cấu hình",
+      "instructionSummary": "Thu thập trường còn thiếu, hiển thị cấu hình đề xuất, xin xác nhận, rồi thay/nối mục Deploy Configuration trong CLAUDE.md."
+    },
+    {
+      "title": "5 Xác minh",
+      "instructionSummary": "Thử curl health check và lệnh trạng thái; lỗi chỉ báo, không chặn."
+    },
+    {
+      "title": "6 Tóm tắt",
+      "instructionSummary": "In DEPLOY CONFIGURATION - COMPLETE và bước tiếp theo."
+    }
+  ],
+  "approvalGates": [
+    "Chọn cấu hình lại / sửa / giữ nguyên khi đã có",
+    "Chọn nền tảng production khi dò thấy nhiều nền tảng",
+    "Xác nhận URL và toàn bộ cấu hình đề xuất trước khi ghi CLAUDE.md"
+  ],
+  "outputs": [
+    "Mục '## Deploy Configuration (configured by /setup-deploy)' trong CLAUDE.md (Platform, Production URL, Deploy workflow, Deploy status command, Merge method, Project type, Post-deploy health check, Custom deploy hooks)",
+    "Báo cáo kết quả xác minh health check / status command"
+  ],
+  "dependsOn": [
+    "gh CLI (đọc phương thức merge và nhánh mặc định)",
+    "CLI nền tảng tùy chọn (fly, vercel...)",
+    "land-and-deploy (người tiêu thụ cấu hình)"
+  ],
+  "modes": [
+    "cấu hình mới",
+    "sửa trường",
+    "dự án không deploy (thư viện/CLI: đặt tất cả là none)"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "You configure deployment settings so the land-and-deploy workflow can run without rediscovering them. Start by reading any existing deploy configuration section in the project instructions file and ask whether to reconfigure, edit one field, or stop. Detect the platform from config files and deploy workflows, but treat detection as a hint: when several platforms match, ask which serves production, and confirm whether the project is a web app, API, CLI or library. Follow the platform-specific recipe to infer the production URL, status command and health check, but always ask the user to confirm the URL; never derive it from a repository name. For unknown setups ask how deploys are triggered, the URL, how success can be checked, and any pre- or post-merge hooks. Collect missing fields including the merge method, offering only methods the repository allows. For projects that do not deploy, record none. Show the full proposed configuration and get confirmation before writing it into the instructions file, replacing the old section idempotently. Afterwards try the health check and status command and report failures without blocking. Never print secrets; for API keys only report whether they are set. The instructions file is the single source of truth."
+}

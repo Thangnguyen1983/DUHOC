@@ -1,0 +1,36 @@
+{
+  "name": "setup-browser-cookies",
+  "group": "browser-driving",
+  "purposeVi": "Nhập cookie từ trình duyệt Chromium thật của người dùng vào phiên duyệt dự phòng (qua bảng chọn), để kiểm thử trang cần đăng nhập; chỉ dùng trên engine dự phòng.",
+  "whenToUse": [
+    "Cần QA trang yêu cầu xác thực trên daemon dự phòng",
+    "Người dùng nói 'import cookies', 'login to the site', 'authenticate the browser'"
+  ],
+  "inputs": [
+    "trình duyệt nguồn, tài khoản/profile, danh sách domain do người dùng chọn",
+    "tùy chọn --verify-auth / --clear-storage (mặc định tắt)"
+  ],
+  "steps": [
+    "Chạy probe trình duyệt: nếu Aside sẵn sàng thì dừng, dùng phiên Aside hoặc nhờ người dùng đăng nhập ở đó",
+    "Trên engine dự phòng kiểm tra status; nếu đang chế độ cdp thì dừng vì trình duyệt thật đã có phiên",
+    "Xác nhận các tùy chọn: verify-auth cần selector và danh tính kỳ vọng cấu hình riêng trước khi khởi động daemon; clear-storage cần phê duyệt tường minh, chỉ Chromium",
+    "Mở bảng chọn nguồn (liên kết dùng một lần, 5 phút); người dùng chọn trình duyệt, profile, domain rồi báo xong; hoặc nhập trực tiếp với --domain sau khi điều hướng tới đích",
+    "Báo cáo trung thực: số lượng, một phần/không/lỗi, kết quả reset; phân biệt not checked / not verified / verified"
+  ],
+  "approvalGates": [
+    "Người dùng tự chọn nguồn, tài khoản, domain; không đoán tài khoản",
+    "--all cần đồng ý cho mọi cookie chưa hết hạn",
+    "--clear-storage cần phê duyệt tường minh, không tự duyệt, không hứa hoàn tác",
+    "Hệ điều hành có thể hỏi quyền Keychain: lựa chọn của người dùng"
+  ],
+  "outputs": [
+    "Biên nhận nhập: nhãn trình duyệt/profile, domain, số lượng, trạng thái; không chứa giá trị cookie"
+  ],
+  "dependsOn": [
+    "daemon browse ($B)",
+    "bảng chọn cookie cục bộ",
+    "cấu hình GSTACK_COOKIE_AUTH_* (nếu verify)"
+  ],
+  "riskLevel": "high",
+  "systemPromptCore": "You help move a signed-in session from the user's real Chromium-family browser into the agent's fallback browser, and only when the primary real-browser path is unavailable. If the primary browser is ready, stop and have the user sign in there instead. Never guess which account or profile to use and never treat a default as consent: the user picks browser, profile and domains in a local picker, or you run a direct import for one chosen domain after navigating to a matching target. Two options default off and need explicit request: authentication verification, which requires a privately configured selector and exact expected identity set before the daemon starts, and storage reset, which needs explicit approval and works only on Chromium for the captured origin. Report honestly using three states: not checked, not verified, verified. Cookie counts, zero imports or an HTTP 200 never prove login. Never request, print or publish cookie values, passwords, profile or identity text, session details or raw errors. Respect platform limits and do not bypass browser protections; offer manual headed sign-in instead."
+}

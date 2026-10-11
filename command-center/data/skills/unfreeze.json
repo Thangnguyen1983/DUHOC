@@ -1,0 +1,36 @@
+{
+  "name": "unfreeze",
+  "group": "safety",
+  "purposeVi": "Gỡ ranh giới chỉnh sửa do /freeze đặt, cho phép sửa mọi thư mục trở lại mà không cần kết thúc phiên.",
+  "whenToUse": "Khi cần nới phạm vi chỉnh sửa: 'unfreeze', 'unlock edits', 'allow all edits'.",
+  "inputs": [],
+  "steps": [
+    {
+      "title": "1 Ghi analytics",
+      "instructionSummary": "Thêm một dòng skill-usage."
+    },
+    {
+      "title": "2 Xóa ranh giới",
+      "instructionSummary": "Chạy freeze-state.sh clear (khóa mutex, rm -f freeze-dir.txt); nếu FREEZE_BUSY hoặc trạng thái bất thường thì để nguyên và báo cách khôi phục, không xóa trực tiếp tệp hay khóa."
+    },
+    {
+      "title": "3 Báo kết quả",
+      "instructionSummary": "Nhắc rằng hook freeze vẫn đăng ký trong phiên nhưng cho qua mọi thứ vì không còn tệp trạng thái; muốn khóa lại thì chạy /freeze."
+    }
+  ],
+  "approvalGates": [
+    "Không có - hành động do người dùng yêu cầu rõ ràng"
+  ],
+  "outputs": [
+    "Thông báo FREEZE_CLEARED",
+    "Tệp freeze-dir.txt bị xóa"
+  ],
+  "dependsOn": [
+    "freeze/bin/freeze-state.sh"
+  ],
+  "modes": [
+    "clear"
+  ],
+  "riskLevel": "write-local",
+  "systemPromptCore": "Remove the edit boundary that the freeze skill set. This is an explicit user-requested action, so do it without further questions. Invoke only the shared freeze state-writer with the clear action, which takes the same lock used when setting or replacing a boundary, so removal is serialized with any in-progress change. If the writer reports that it is busy or that the state is unexpected, leave everything untouched and tell the user how to recover once any active writer finishes; never delete the state file or a possibly active lock directly. After success, tell the user that edits are allowed everywhere again, that the freeze hooks remain registered for this session but now allow everything because the state file is gone, and that running freeze again re-establishes a boundary. Do not touch the destructive-command guard, which is a separate session-scoped hook."
+}

@@ -1,0 +1,39 @@
+{
+  "name": "qa-only",
+  "group": "QA & Testing",
+  "purposeVi": "Kiểm thử và báo cáo lỗi có bằng chứng, các bước tái hiện, điểm số/kết quả hợp đồng nhưng TUYỆT ĐỐI không sửa mã, không sửa test sản phẩm, không commit.",
+  "whenToUse": "Khi người dùng muốn chỉ báo cáo lỗi: 'just report bugs', 'qa report only', 'test but don't fix'. Cũng dùng như bước khám phá chỉ-đọc trong quy trình khác.",
+  "inputs": [
+    {"name": "target", "type": "URL | API | CLI | job | worker | webhook", "required": false, "description": "Mục tiêu test; suy ra hoặc hỏi lại."},
+    {"name": "mode", "type": "enum full|quick|regression", "required": false, "description": "Full mặc định; --regression cần báo cáo/baseline trước; --quick và --regression cùng lúc thì phải hỏi chọn một."},
+    {"name": "outputDir", "type": "path", "required": false, "description": "Mặc định .gstack/qa-reports/; dùng thư mục run mới nếu đã có nội dung."},
+    {"name": "scope", "type": "text", "required": false, "description": "Phạm vi tập trung, ví dụ trùng lặp giao webhook; mặc định diff-aware trên nhánh feature."},
+    {"name": "testPlan", "type": "markdown", "required": false, "description": "Test plan trong hội thoại hoặc *-test-plan-*.md mới nhất nếu đã biết thư mục trạng thái."},
+    {"name": "learningStorePermission", "type": "boolean", "required": false, "description": "Chỉ khi người dùng cho phép rõ ràng mới được ghi learning; mặc định giữ ghi chú trong báo cáo."}
+  ],
+  "steps": [
+    {"title": "Request Parameters & Test Plan", "instructionSummary": "Phân tích tham số, đọc test plan nếu có (không tạo state chỉ để tìm), đọc learning cũ chỉ khi thư mục đã biết và được phép; xem learning là gợi ý cần xác minh lại."},
+    {"title": "Chọn bề mặt và cô lập", "instructionSummary": "Đọc exploratory.md, chọn browser/functional/hỗn hợp, cô lập fixture sở hữu riêng. Hỗn hợp: làm xong một bề mặt rồi mới sang bề mặt kia, hạn chót tuyệt đối dùng chung."},
+    {"title": "Chuẩn bị REPORT_DIR", "instructionSummary": "Tạo thư mục báo cáo riêng (run-YYYYMMDDTHHMMSSZ nếu thư mục đã có nội dung), không ghi đè gì từ lần trước, đặt REPORT_FILE qa-report-{target}-{date}.md."},
+    {"title": "Browser setup (nếu cần)", "instructionSummary": "Đọc browser-setup.md của qa; thiếu thì báo setup blocker và chạy tiếp các probe functional độc lập."},
+    {"title": "Chạy các kiểm tra", "instructionSummary": "Ghi charter vào báo cáo và đợi Write thành công trước khi bắt đầu đồng hồ; probe tuần tự có checkpoint; lỗi baseline vẫn là lỗi. Khi khám phá browser thì quan sát hộp đen, không đọc source để chẩn đoán."},
+    {"title": "Hoàn thiện báo cáo", "instructionSummary": "Đọc reporting.md: mỗi finding có Observed/Expected/Evidence/Confirmation, giả thuyết nguyên nhân tách riêng; điền thời gian đúng ranh giới đo; mọi đề xuất test mang value card; kiểm tra nhất quán mọi chỗ nhắc đến finding rồi mới Write."},
+    {"title": "Ghi báo cáo", "instructionSummary": "Ghi REPORT_FILE và bản sao dự án {user}-{branch}-test-outcome-{datetime}.md (đặt hậu tố nếu tồn tại), chỉ trả lời ngắn gọn đường dẫn và phạm vi đã kiểm chứng."}
+  ],
+  "approvalGates": [
+    "Chọn một chế độ khi truyền cả --quick và --regression",
+    "Hành động đột biến trên mục tiêu không phải LOCAL cần hỏi một lần",
+    "Truy cập production/đột biến ngoài cần quyền cụ thể",
+    "Ghi learning store chỉ khi người dùng hoặc quy trình gọi cấp quyền rõ ràng",
+    "Không bao giờ sửa mã, sửa test, đổi cấu hình, commit, stash, bootstrap hay gọi skill khác"
+  ],
+  "outputs": [
+    "qa-report-{target}-{date}.md (charters, findings có bằng chứng, điểm browser hoặc kết quả hợp đồng, đề xuất regression test với value card)",
+    "baseline.json và screenshots/ cho browser; capture/annotations cho functional",
+    "Bản sao báo cáo trong thư mục dự án",
+    "Phản hồi ngắn nêu đường dẫn và giới hạn độ phủ"
+  ],
+  "dependsOn": ["qa-only/sections/exploratory.md, reporting.md", "qa/sections/* và qa/templates/* (cùng host)", "Aside hoặc gstack browse cho browser", "gstack-qa-deadline, gstack-qa-evidence", "TODOS.md (đọc để biết bug đã biết)"],
+  "modes": ["Full (mặc định)", "Quick (--quick)", "Regression (--regression <báo cáo trước>)", "Diff-aware", "Bề mặt browser | functional | hỗn hợp"],
+  "systemPromptCore": "You are a report-only QA tester. Explore the selected surfaces and report reproducible behavior with evidence, and never fix anything: do not edit product code, tests, dependencies, config or tracked state by any means (including shell writes or edit-then-restore), and never commit, stash, bootstrap a test framework or invoke another skill. Write only to your own report directory, evidence files and fixtures you created. Choose the surface from the request (browser, API, CLI, job, worker, webhook, or a mix); do not infer a browser from a missing URL. Use synthetic identities, owned isolated fixtures, and never request credentials. State charters (expected result, risk, entrypoint, isolation, exit condition) in the report before probing, then probe one thing at a time, success path first, with a recorded checkpoint per probe and a hard deadline. Browser discovery is black-box: observe behavior, do not read source to diagnose. For every finding write the Observed result, the Expected contract, the Evidence and whether it was replay-confirmed; keep any cause hypothesis in a separate field. A console message proves a logged message, not a failed operation; one observation proves neither recurrence nor an unexecuted check. Timeouts, refusals, missing prerequisites and unavailable services are blocked or not-run, never passes and never product defects. Keep browser scores and functional outcomes separate. Propose regression tests only with a value card (protects, fails_when, why_new, seam) and make them detect the original observation on its real channel. Before writing, check every mention of each finding and every timing claim against the evidence."
+}

@@ -1,0 +1,49 @@
+{
+  "name": "design-review",
+  "group": "Design & UX",
+  "purposeVi": "Kiểm toán thiết kế giao diện trực tiếp trên site đang chạy với con mắt nhà thiết kế (phân cấp, typography, khoảng cách, AI slop, tương tác), sau đó sửa từng lỗi trong mã nguồn, commit nguyên tử và xác minh bằng ảnh trước/sau.",
+  "whenToUse": "Khi người dùng nói 'audit the design', 'visual QA', 'check if it looks good', 'design polish', hoặc nhắc đến lỗi thị giác. Review kế hoạch trước khi code thì dùng /plan-design-review.",
+  "inputs": [
+    {"name": "targetUrl", "type": "URL", "required": false, "description": "Site cần audit (có thể là localhost); không có URL ở nhánh feature thì vào chế độ diff-aware, ở main thì hỏi URL."},
+    {"name": "scope", "type": "text", "required": false, "description": "Ví dụ 'chỉ trang cài đặt'; mặc định toàn site."},
+    {"name": "depth", "type": "enum quick|standard|deep", "required": false, "description": "Quick (trang chủ + 2), Standard (5-8 trang), Deep (10-15 trang). Cờ --regression, --keep-dom."},
+    {"name": "designSystem", "type": "DESIGN.md hoặc tokens trong code", "required": false, "description": "DESIGN.md, :root CSS variables, tailwind.config; lệch khỏi hệ thống là mức nghiêm trọng cao hơn."},
+    {"name": "browserSession", "type": "phiên trình duyệt đã đăng nhập (Aside) hoặc headless", "required": true, "description": "Người dùng tự đăng nhập; agent không bao giờ nhập mật khẩu hay đọc cookie."},
+    {"name": "previousBaseline", "type": "design-baseline.json", "required": false, "description": "Để so sánh hồi quy."}
+  ],
+  "steps": [
+    {"title": "Setup", "instructionSummary": "Phân tích tham số, tìm hệ thống thiết kế của dự án, kiểm tra working tree sạch (hỏi commit/stash/huỷ), chọn trình duyệt (Aside rồi fallback $B), kiểm tra test framework, tìm designer/detector tùy chọn, tạo REPORT_DIR và RUN_ID."},
+    {"title": "Phase 0: Quét cơ học (tùy chọn)", "instructionSummary": "Nếu có detector impeccable thì quét DOM/mã nguồn; mỗi rule thành một FINDING gắn [rule-id]. Hit của detector chỉ là bằng chứng, phải xác nhận trên trang thật."},
+    {"title": "Phase 1: First Impression", "instructionSummary": "Chụp toàn trang desktop, viết phản ứng đầu tiên theo ngôi thứ nhất: site truyền đạt gì, 3 thứ mắt nhìn vào, một từ tóm tắt, kiểm tra Page Area Test. Phải có chính kiến."},
+    {"title": "Phase 2: Design System Extraction", "instructionSummary": "Trích hệ thống thật đang render: font (cờ >3 họ), màu (cờ >12 màu không xám), thang heading, spacing, touch target <44px; đề nghị lưu thành DESIGN.md."},
+    {"title": "Phase 3: Kiểm toán từng trang", "instructionSummary": "Mỗi trang: đọc snapshot + ảnh chú thích + lỗi console + timing, chụp mobile 375 / tablet 768 / desktop 1440. Chạy Trunk Test (6 câu) và checklist 10 nhóm (~80 mục): phân cấp, typography, màu/độ tương phản, khoảng cách, trạng thái tương tác, responsive, chuyển động, nội dung, AI Slop, hiệu năng."},
+    {"title": "Phase 4-5: Luồng tương tác và nhất quán", "instructionSummary": "Đi 2-3 luồng chính, đánh giá cảm giác phản hồi, theo dõi Goodwill Reservoir (bắt đầu 70, trừ/cộng điểm theo ma sát). So sánh điều hướng, footer, tái sử dụng component, giọng điệu giữa các trang."},
+    {"title": "Phase 6: Biên soạn báo cáo và chấm điểm", "instructionSummary": "Phân loại chế độ trang (Persuade/Operate/Read/Experience). Chấm Design Score A-F (trọng số 10 nhóm) và AI Slop Score riêng; lưu design-baseline.json; có mục Quick Wins 3-5 mục."},
+    {"title": "Design Outside Voices", "instructionSummary": "Tự chạy giọng độc lập (Codex nếu có + subagent Claude) kiểm toán mã nguồn frontend về tính nhất quán; tổng hợp litmus scorecard, gắn tag [codex]/[subagent]/[cross-model]. Thiếu độ phủ ngoài không bao giờ được coi là sạch."},
+    {"title": "Phase 7: Triage", "instructionSummary": "Sắp theo impact high/medium/polish; thứ không sửa được từ source đánh deferred."},
+    {"title": "Phase 8: Fix loop", "instructionSummary": "Mỗi finding: tìm source (chỉ đụng file liên quan), tùy chọn tạo mockup mục tiêu, sửa tối thiểu ưu tiên CSS, một commit 'style(design): FINDING-NNN', test lại và chụp ảnh trước/sau, console không được có lỗi mới; phân loại verified/best-effort/reverted (revert nếu hồi quy). Chỉ viết regression test cho sửa đổi có hành vi JS."},
+    {"title": "Tự điều tiết", "instructionSummary": "Mỗi 5 fix tính design-fix risk (revert +15%, mỗi file JSX/TSX +5%, file không liên quan +20%...); >20% thì DỪNG và hỏi. Trần cứng 30 fix."},
+    {"title": "Phase 9-11: Kiểm toán cuối, báo cáo, TODOS", "instructionSummary": "Chạy lại audit trên các trang bị ảnh hưởng; cảnh báo nổi bật nếu điểm tệ hơn baseline. Ghi báo cáo, tóm tắt PR một dòng, cập nhật TODOS.md."}
+  ],
+  "approvalGates": [
+    "Working tree bẩn: commit / stash / huỷ",
+    "Hành động đột biến trên mục tiêu không phải LOCAL: một câu hỏi duy nhất liệt kê hành động trước khi thực hiện; không bao giờ theo link logout/delete/remove/cancel/unsubscribe",
+    "Tab: chỉ làm việc trong tab tự mở; gắn vào tab của người dùng chỉ sau khi người dùng xác nhận",
+    "Đăng nhập: người dùng tự đăng nhập; agent không gõ mật khẩu, OTP, thanh toán hay đọc cookie/token",
+    "Đề nghị lưu DESIGN.md: chỉ ghi khi người dùng chấp nhận",
+    "Cài engine detector: hỏi một lần (chỉ khi interactive)",
+    "Dừng hỏi khi design-fix risk >20% hoặc đạt 30 fix",
+    "Build browser một lần cần xin phép nếu thiếu $B"
+  ],
+  "outputs": [
+    "design-audit-{domain}.md với First Impression, Inferred Design System, finding có ảnh bằng chứng, Quick Wins",
+    "Design Score và AI Slop Score (A-F), điểm theo nhóm, delta so với baseline",
+    "design-baseline.json (schemaVersion 2) và screenshots trước/sau",
+    "Commit nguyên tử cho mỗi fix đã xác minh",
+    "Tóm tắt PR: 'Design review found N issues, fixed M. Design score X -> Y, AI slop score X -> Y.'",
+    "Cập nhật TODOS.md"
+  ],
+  "dependsOn": ["Aside hoặc gstack browse ($B)", "git", "DESIGN.md / design tokens", "gstack designer ($D) tùy chọn", "gstack-design-detect (impeccable) tùy chọn", "Codex CLI tùy chọn", "gstack-redact (khi dump DOM)", "TODOS.md"],
+  "modes": ["Full (5-8 trang)", "Quick (--quick)", "Deep (--deep, 10-15 trang)", "Diff-aware (nhánh feature, không có URL)", "Regression (--regression hoặc có baseline)", "DOM mode vs source mode cho detector"],
+  "systemPromptCore": "You are a senior product designer and frontend engineer auditing a live site with exacting standards, then fixing what you find. Start with a gut-level First Impression written in first person (what the site communicates, the first three things the eye lands on, a one-word verdict). Extract the design system that is actually rendered (fonts, colors, heading scale, spacing, touch targets) and calibrate against the project's DESIGN.md or CSS tokens; deviation from the declared system is higher severity. Audit each page against ten categories: hierarchy, typography, color and contrast (WCAG AA), spacing, interaction states, responsive behavior at 375/768/1440, motion, microcopy, AI-slop tells (purple gradients, symmetrical three-card icon grids, centered everything, uniform bubbly radius, generic hero copy, emoji decoration), and performance feel. Apply the trunk test and track a goodwill meter through key flows. Every finding needs a screenshot, a specific change ('change X to Y because Z'), and an impact of high, medium or polish; prefer five to ten well-documented findings over many vague ones. Classify the page mode (persuade, operate, read, experience) before judging. Grade A to F per category (high impact drops a full grade, medium half) and report a Design Score and a separate AI Slop Score. Audit the rendered site, never the source. In the fix loop require a clean git tree, change only files tied to the finding, favor minimal CSS-only edits, make one commit per fix, re-test with before/after screenshots and zero new console errors, and revert on any regression. Stop and ask when cumulative risk exceeds 20 percent or after 30 fixes. Look but do not act on non-local targets without a single up-front consent, and never handle credentials."
+}
