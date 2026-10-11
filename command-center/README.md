@@ -8,7 +8,7 @@
 export ANTHROPIC_API_KEY=sk-ant-...      # bắt buộc để agent thực thi
 # tuỳ chọn: CC_MODEL (mặc định claude-sonnet-5-5), CC_ROOTS (thư mục được phép, cách nhau bằng ':'), PORT (4577)
 node server.mjs                           # in ra đường dẫn kèm token
-npm test                                  # 16 test (an toàn, luồng đầy đủ, trình duyệt)
+npm test                                  # 21 test (an toàn, luồng, trình duyệt, Nhà máy)
 ```
 
 Không cần cài thư viện (Node ≥ 20). Mặc định chỉ cho làm việc trong thư mục cha của `command-center/`.
@@ -40,3 +40,17 @@ Cần Playwright (`playwright-core` hoặc `CC_PLAYWRIGHT=/đường/dẫn`) và
 - `localhost` mở ngay; **mỗi trang ngoài phải được bạn duyệt theo origin**, và mọi thao tác bấm/điền trên trang ngoài đều hỏi lại.
 - Chặn `file:`, `javascript:`, mạng nội bộ và địa chỉ metadata (kể cả yêu cầu do trang tự gọi). Không nhập cookie, không chạy JS tuỳ ý.
 - Nội dung trang là dữ liệu không tin cậy. Ảnh chụp gửi cho mô hình và hiện trong dòng thời gian.
+
+## Nhà máy ứng dụng (tab "Nhà máy ứng dụng")
+
+Nghiên cứu thị trường → kế hoạch → **bạn duyệt** → tự sản xuất → review + bảo mật → sẵn sàng giao.
+
+1. **Nghiên cứu** (`/market-research`, chỉ đọc, dùng công cụ tìm kiếm web của API): trả về cơ hội kèm nguồn. Cơ hội dưới 2 nguồn độc lập bị gắn "chưa kiểm chứng" và bị hạ điểm nhu cầu xuống tối đa 4; URL không phải http(s) bị loại. Có thể bật **lịch tự nghiên cứu** (chỉ đọc, có trần số lần/ngày, chỉ chạy khi máy chủ mở).
+2. **Kế hoạch** (`/app-plan`): phạm vi MVP, kiến trúc, tiêu chí nghiệm thu đo được, tác vụ. Bạn có thể **từ chối kèm phản hồi** để lập lại.
+3. **Duyệt**: nút Duyệt gửi hash của kế hoạch đang hiển thị; hash lệch (kế hoạch đã đổi) thì bị từ chối. Chỉ sau đó mới có thư mục dự án (`data/factory/projects/<id>`, git cục bộ).
+4. **Sản xuất tự động** (`factory-build` → `review` → `cso`), chạy trong thư mục dự án: ghi file tự động; tự chạy `npm ci/install --ignore-scripts`, `npm test`, `npm run build|lint|test`, `node ...`, `git add/commit` cục bộ. Mọi lệnh khác (kể cả `git push`, `npm publish`, `curl`, `npx`) vẫn **chờ bạn duyệt**. Bước nào BLOCKED thì chuỗi dừng.
+5. **Giao ra ngoài** (push, PR, deploy) không thuộc chuỗi tự động: bạn tự quyết sau khi xem kết quả.
+
+Ngân sách: `CC_FACTORY_TOKEN_CAP` (mặc định 2.000.000 token cho toàn Nhà máy), `CC_BUILD_TOKEN_CAP` (600.000/lượt build), `CC_RUN_TOKEN_CAP` (150.000/lượt khác). Hết ngân sách thì không bắt đầu việc mới.
+
+Giới hạn trung thực: "nhu cầu cao" là suy luận từ tín hiệu web công khai, không phải bảo đảm thương mại; hãy tự kiểm tra các nguồn trước khi duyệt. Cài gói npm chạy trong máy bạn (đã tắt script cài đặt nhưng vẫn là mã của bên thứ ba); chỉ dùng trên máy/ môi trường bạn chấp nhận rủi ro.

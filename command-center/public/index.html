@@ -13,7 +13,18 @@
   <span id="freeze" class="pill"></span>
   <button id="freeze-btn" class="ghost">Freeze…</button>
 </header>
-<main>
+<nav id="tabs"><button id="tab-cmd" class="chip active" type="button">Lệnh</button><button id="tab-fac" class="chip" type="button">Nhà máy ứng dụng</button></nav>
+<section id="factory" hidden>
+  <div class="panel">
+    <div class="row spread"><h2>Nghiên cứu thị trường</h2><span id="fac-budget" class="pill"></span></div>
+    <div class="row"><label>Trọng tâm (tuỳ chọn)<input id="fac-focus" placeholder="vd: công cụ cho giáo viên, thị trường Việt Nam"></label><button id="fac-research" type="button">Nghiên cứu ngay</button></div>
+    <div class="row sched"><label class="inline"><input type="checkbox" id="sch-on" style="width:auto"> Tự nghiên cứu theo lịch (chỉ đọc)</label><label>Mỗi (giờ)<input id="sch-hours" type="number" min="1" max="168" value="24"></label><label>Tối đa/ngày<input id="sch-max" type="number" min="1" max="6" value="2"></label><button id="sch-save" class="ghost" type="button">Lưu lịch</button></div>
+    <p id="fac-msg" role="status"></p>
+  </div>
+  <div class="panel"><h2>Cơ hội đã tìm thấy</h2><div id="ops"></div></div>
+  <div class="panel"><h2>Dự án</h2><div id="projects"></div></div>
+</section>
+<main id="main">
   <aside id="skills" aria-label="Danh sách skill">
     <input id="skill-search" type="search" placeholder="Tìm skill…">
     <div id="skill-list"></div>

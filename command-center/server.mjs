@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadSkills, suggest, parseCommand, PIPELINES } from './lib/skills.mjs';
 import { RunManager } from './lib/runs.mjs';
+import { Factory } from './lib/factory.mjs';
 import { anthropicProvider, noKeyProvider } from './lib/provider.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,9 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
   const saveSafety = () => { fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(safetyFile, JSON.stringify(safety)); };
 
   const manager = new RunManager({ dataDir, skills, provider, getSafety: () => safety });
+  const factory = new Factory({ dataDir, manager, skills });
+  const timer = provider.name === 'none' ? null : setInterval(() => { try { factory.tick(); } catch { /* ngân sách/ lỗi: bỏ qua lượt này */ } }, 10 * 60_000);
+  timer?.unref();
 
   const inRoots = (p) => {
     try {
@@ -109,6 +113,35 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
         res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
         return res.end(fs.readFileSync(f));
       }
+      if (url.pathname.startsWith('/api/factory')) {
+        const fail = (e) => json(res, 400, { error: e.message });
+        const fp = url.pathname.slice('/api/factory'.length);
+        if (fp === '' && req.method === 'GET') return json(res, 200, factory.overview());
+        if (fp === '/research' && req.method === 'POST') {
+          const b = await readBody(req);
+          try { return json(res, 201, { runId: factory.startResearch({ focus: String(b.focus || '').slice(0, 300) }) }); } catch (e) { return fail(e); }
+        }
+        if (fp === '/schedule' && req.method === 'POST') return json(res, 200, factory.setSchedule(await readBody(req)));
+        if (fp === '/projects' && req.method === 'POST') {
+          const b = await readBody(req);
+          try { const p = factory.startPlan(String(b.opportunityId || '')); return json(res, 201, { id: p.id }); } catch (e) { return fail(e); }
+        }
+        const pm = fp.match(/^\/projects\/(\w+)(?:\/(approve|reject|stop))?$/);
+        if (pm) {
+          const proj = factory.get(pm[1]);
+          if (!proj) return json(res, 404, { error: 'Không có dự án.' });
+          if (!pm[2] && req.method === 'GET') return json(res, 200, proj);
+          if (req.method === 'POST') {
+            const b = await readBody(req);
+            try {
+              if (pm[2] === 'approve') return json(res, 200, factory.approve(proj.id, String(b.planHash || '')));
+              if (pm[2] === 'reject') { factory.rejectPlan(proj.id, String(b.feedback || '').slice(0, 2000)); return json(res, 200, { ok: true }); }
+              if (pm[2] === 'stop') return json(res, 200, { stopped: factory.stop(proj.id) });
+            } catch (e) { return fail(e); }
+          }
+        }
+        return json(res, 404, { error: 'Không tìm thấy.' });
+      }
       let m = url.pathname.match(/^\/api\/runs\/([\w]+)(?:\/(stream|respond|stop|report))?$/);
       if (m) {
         const run = manager.get(m[1]);
@@ -171,9 +204,9 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider, roots, 
   });
 
   return {
-    server, manager, token, skills,
+    server, manager, factory, token, skills,
     listen: () => new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server.address().port))),
-    close: () => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }),
+    close: () => new Promise((resolve) => { clearInterval(timer); server.close(resolve); server.closeAllConnections(); }),
   };
 }
 

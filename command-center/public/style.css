@@ -38,3 +38,12 @@ details summary{cursor:pointer;color:var(--mute);font-size:12px}
 .run-item small{display:block;color:var(--mute)}
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;max-width:520px;width:92%}
 #dir-list{max-height:260px;overflow:auto;margin:8px 0}
+
+#tabs{display:flex;gap:6px;padding:10px 12px 0}.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+#factory{padding:12px;display:grid;gap:12px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+.op,.proj{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
+.scores span{display:inline-block;margin-right:10px;font-size:12px;color:var(--mute)}.scores b{color:var(--ink)}
+.tag{font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}.tag.ok{color:var(--ok);border-color:var(--ok)}.tag.warn{color:var(--warn);border-color:var(--warn)}.tag.bad{color:var(--bad);border-color:var(--bad)}
+.op a{color:var(--accent)}.sched{margin-top:8px}label.inline{display:flex;gap:6px;align-items:center;color:var(--ink)}
+.plan{max-height:420px;overflow:auto}.stages{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+[hidden]{display:none !important}

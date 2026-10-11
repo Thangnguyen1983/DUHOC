@@ -14,7 +14,7 @@ export function anthropicProvider({ apiKey, model }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error?.message || `HTTP ${res.status}`);
-      return { content: body.content || [], stopReason: body.stop_reason };
+      return { content: body.content || [], stopReason: body.stop_reason, usage: { input: body.usage?.input_tokens || 0, output: body.usage?.output_tokens || 0 } };
     },
   };
 }
@@ -38,7 +38,7 @@ export function scriptedProvider(script) {
     async complete({ messages }) {
       const step = script[i++];
       if (!step) throw new Error('Hết kịch bản');
-      return { content: typeof step === 'function' ? step(messages) : step };
+      return { content: typeof step === 'function' ? step(messages) : step, usage: { input: 1000, output: 200 } };
     },
   };
 }

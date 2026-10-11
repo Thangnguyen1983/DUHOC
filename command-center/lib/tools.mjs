@@ -39,6 +39,20 @@ export function toolDefs(skill) {
   return defs;
 }
 
+// Lệnh được tự chạy trong lượt build đã được duyệt kế hoạch: chỉ trong thư mục dự án,
+// không có toán tử shell, không push/deploy, cài gói luôn kèm --ignore-scripts.
+const BUILD_AUTO = [
+  /^npm (ci|install)( --ignore-scripts| --no-audit| --no-fund| --save-dev| -D| [@\w./-]+)*$/,
+  /^npm (test|run (build|lint|test|typecheck|start:test))( -- [\w .=:/-]+)?$/,
+  /^node (--test )?[\w./-]+( [\w./=:-]+)*$/,
+  /^git (init|add (-A|\.|[\w./-]+)|status|diff( --stat)?|log( --oneline)?( -\d+)?|commit -m ("[^"`$\\]*"|'[^'`$\\]*'))$/,
+  /^(mkdir -p|ls|cat|wc -l) [\w./ -]+$/,
+];
+export function buildAutoAllowed(cmd) {
+  const c = String(cmd).trim();
+  return BUILD_AUTO.some((re) => re.test(c)) && !/[;&|<>`\n]|\$\(|\$\{/.test(c.replace(/^git commit -m ("[^"]*"|'[^']*')$/, 'git commit'));
+}
+
 function clip(s, n = MAX_OUT) {
   s = String(s);
   return s.length > n ? `${s.slice(0, n)}\n…[cắt ${s.length - n} ký tự]` : s;
@@ -138,7 +152,9 @@ export async function executeTool(name, input, ctx) {
       if (ctx.skill.readOnly && cls.level !== 'auto') {
         return { content: 'Skill chỉ đọc: chỉ chạy được lệnh chỉ-đọc.', isError: true };
       }
-      if (cls.level === 'ask') {
+      if (cls.level === 'ask' && ctx.policy === 'factory-build' && buildAutoAllowed(input.command)) {
+        ctx.audit('command_auto_build', { cmd: String(input.command).slice(0, 120) });
+      } else if (cls.level === 'ask') {
         const d = await ctx.approve({ type: 'command', title: 'Chạy lệnh', command: input.command, reason: input.reason, rule: cls.rule });
         if (!d.allow) return { content: `Người dùng từ chối.${d.reason ? ` Lý do: ${d.reason}` : ''}`, isError: true };
       }

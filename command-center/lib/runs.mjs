@@ -21,6 +21,7 @@ export class RunManager {
     this.provider = provider;
     this.getSafety = getSafety; // () => { freezeDir }
     this.runs = new Map();
+    this.endHooks = [];
     this.#loadExisting();
   }
 
@@ -45,7 +46,7 @@ export class RunManager {
 
   list() {
     return [...this.runs.values()]
-      .map(({ id, skill, prompt, status, workspace, createdAt, verdict, pipeline }) => ({ id, skill, prompt, status, workspace, createdAt, verdict, pipeline }))
+      .map(({ id, skill, prompt, status, workspace, createdAt, verdict, pipeline, tokens, label }) => ({ id, skill, prompt, status, workspace, createdAt, verdict, pipeline, tokens, label }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
@@ -64,17 +65,19 @@ export class RunManager {
     return ev;
   }
 
-  start({ skillName, prompt, workspace, mode = 'ask', priorRunId = null, pipeline = null }) {
+  onEnd(fn) { this.endHooks.push(fn); }
+
+  start({ skillName, prompt, workspace, mode = 'ask', priorRunId = null, pipeline = null, policy = null, tokenCap = null, factoryOk = false, label = null }) {
     const skill = this.skills.get(skillName);
     if (!skill) throw new Error(`Không có skill "${skillName}".`);
-    if (!skill.executable) throw new Error(skill.unavailableReason || 'Skill này không chạy được ở đây.');
+    if (!skill.executable && !(skill.factoryOnly && factoryOk)) throw new Error(skill.unavailableReason || 'Skill này không chạy được ở đây.');
     if (!fs.existsSync(workspace) || !fs.statSync(workspace).isDirectory()) throw new Error('Workspace không tồn tại.');
     const realWs = fs.realpathSync(workspace);
     const id = `r${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}`;
     fs.mkdirSync(path.join(this.runsDir, id), { recursive: true });
     const run = {
       id, skill: skillName, prompt, workspace: realWs, mode, status: 'running', verdict: null,
-      createdAt: new Date().toISOString(), priorRunId, pipeline, events: [], listeners: new Set(),
+      createdAt: new Date().toISOString(), priorRunId, pipeline, policy, label, tokens: 0, tokenCap: tokenCap || Number(process.env.CC_RUN_TOKEN_CAP || 150000), events: [], listeners: new Set(),
       pending: null, abort: new AbortController(),
     };
     this.runs.set(id, run);
@@ -94,6 +97,7 @@ export class RunManager {
     this.#emit(run, 'end', { status, verdict, message });
     this.#persistMeta(run);
     this.audit(run.id, 'run_end', { status, verdict });
+    for (const h of this.endHooks) { try { h(run); } catch { /* hook không được làm hỏng lượt chạy */ } }
   }
 
   stop(id) {
@@ -131,6 +135,7 @@ export class RunManager {
     const priorReport = run.priorRunId ? this.report(run.priorRunId) : null;
     const system = buildSystemPrompt(skill, { workspace: run.workspace, mode: run.mode, freezeDir: safety().freezeDir, priorReport });
     const tools = toolDefs(skill);
+    if (skill.webSearch) tools.push({ type: 'web_search_20250305', name: 'web_search', max_uses: 8 });
     const messages = [{ role: 'user', content: run.prompt || `Chạy /${skill.name} cho workspace hiện tại.` }];
 
     let browser = null;
@@ -139,6 +144,7 @@ export class RunManager {
       browser: () => (browser ||= new BrowserSession({ shotsDir: path.join(this.runsDir, run.id, 'shots') })),
       workspace: run.workspace,
       mode: run.mode,
+      policy: run.policy,
       skill,
       signal: run.abort.signal,
       get freezeDir() { return safety().freezeDir; },
@@ -163,11 +169,17 @@ export class RunManager {
         if (run.abort.signal.aborted) return;
         return this.#finish(run, 'error', null, `Lỗi gọi mô hình: ${e.message}`);
       }
+      run.tokens += (resp.usage?.input || 0) + (resp.usage?.output || 0);
       messages.push({ role: 'assistant', content: resp.content });
       for (const b of resp.content) {
         if (b.type === 'text' && b.text.trim()) this.#emit(run, 'assistant', { text: redact(b.text).text });
       }
+      if (run.tokens > run.tokenCap) {
+        this.#emit(run, 'assistant', { text: `Dừng: vượt ngân sách ${run.tokenCap} token.` });
+        return this.#finish(run, 'done', 'BLOCKED', `Vượt ngân sách token (${run.tokens}/${run.tokenCap}).`);
+      }
       const uses = resp.content.filter((b) => b.type === 'tool_use');
+      if (!uses.length && resp.stopReason === 'pause_turn') continue; // tìm kiếm web chưa xong: gọi tiếp
       if (!uses.length) {
         // Không gọi công cụ và không finish: coi là báo cáo cuối dạng văn bản.
         const text = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n');

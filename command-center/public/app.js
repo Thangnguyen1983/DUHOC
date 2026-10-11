@@ -233,3 +233,79 @@ $('#dir-pick').addEventListener('click', async () => {
 $('#freeze').addEventListener('click', async () => { if (state.safety.freezeDir && confirm('Tắt freeze?')) { await api('/api/safety', { freezeDir: null }); refresh(); } });
 
 refresh().catch((e) => { $('#form-msg').textContent = e.message; });
+
+// ---- Nhà máy ứng dụng ----
+const STAGE = { planning: ['Đang lập kế hoạch', 'warn'], planned: ['Chờ bạn duyệt kế hoạch', 'warn'], building: ['Đang sản xuất', 'warn'], ready: ['Sẵn sàng giao (chưa đẩy/deploy)', 'ok'], blocked: ['Dừng/cần xử lý', 'bad'] };
+const fmt = (n) => Number(n || 0).toLocaleString('vi-VN');
+let facTimer = null;
+
+function showTab(name) {
+  const fac = name === 'fac';
+  $('#factory').hidden = !fac;
+  $('#main').hidden = fac;
+  $('#tab-fac').classList.toggle('active', fac);
+  $('#tab-cmd').classList.toggle('active', !fac);
+  clearInterval(facTimer);
+  if (fac) { loadFactory(); facTimer = setInterval(loadFactory, 4000); }
+}
+$('#tab-cmd').addEventListener('click', () => showTab('cmd'));
+$('#tab-fac').addEventListener('click', () => showTab('fac'));
+
+const openRunFromFactory = (id) => { showTab('cmd'); refresh().then(() => openRun(id)); };
+
+function renderOp(o) {
+  return h('div', { class: 'op' },
+    h('div', { class: 'row spread' }, h('b', {}, o.title), h('span', { class: `tag ${o.verified ? 'ok' : 'warn'}` }, o.verified ? 'Đã kiểm chứng (≥2 nguồn)' : 'Chưa kiểm chứng')),
+    h('div', {}, o.problem),
+    h('div', { class: 'scores' }, h('span', {}, 'Nhu cầu ', h('b', {}, o.demandScore)), h('span', {}, 'Ít cạnh tranh ', h('b', {}, o.competitionScore)), h('span', {}, 'Khả thi ', h('b', {}, o.feasibilityScore))),
+    o.mvpScope ? h('div', {}, h('small', {}, `MVP: ${o.mvpScope}`)) : null,
+    h('details', {}, h('summary', {}, `Bằng chứng (${o.evidence.length}) · đối thủ (${o.competitors.length}) · rủi ro (${o.risks.length})`),
+      h('ul', {}, ...o.evidence.map((e) => h('li', {}, `${e.claim} — `, h('a', { href: e.url, target: '_blank', rel: 'noopener noreferrer' }, e.url)))),
+      o.competitors.length ? h('ul', {}, ...o.competitors.map((c) => h('li', {}, `${c.name}: ${c.weakness}`))) : null,
+      o.risks.length ? h('ul', {}, ...o.risks.map((r) => h('li', {}, `Rủi ro: ${r}`))) : null),
+    h('div', { class: 'row' }, h('button', { type: 'button', onclick: async () => { try { await api('/api/factory/projects', { opportunityId: o.id }); loadFactory(); } catch (e) { $('#fac-msg').textContent = e.message; } } }, 'Lập kế hoạch sản xuất')));
+}
+
+function renderProject(p) {
+  const [label, tone] = STAGE[p.stage] || [p.stage, ''];
+  const act = [];
+  if (p.stage === 'planned') {
+    const fb = h('input', { placeholder: 'Phản hồi nếu từ chối (vd: cắt bớt phạm vi)' });
+    act.push(
+      h('p', {}, `Hash kế hoạch: ${p.planHash}. Duyệt nghĩa là cho phép hệ thống tự build trong thư mục dự án, tự chạy test/commit cục bộ; push, deploy, publish vẫn cần bạn duyệt riêng.`),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', onclick: async () => { if (!confirm('Duyệt kế hoạch này và bắt đầu sản xuất tự động?')) return; try { await api(`/api/factory/projects/${p.id}/approve`, { planHash: p.planHash }); loadFactory(); } catch (e) { alert(e.message); } } }, 'Duyệt và sản xuất'),
+        fb, h('button', { type: 'button', class: 'danger', onclick: async () => { try { await api(`/api/factory/projects/${p.id}/reject`, { feedback: fb.value }); loadFactory(); } catch (e) { alert(e.message); } } }, 'Từ chối, lập lại')));
+  }
+  if (['planning', 'building'].includes(p.stage)) act.push(h('button', { type: 'button', class: 'danger', onclick: async () => { await api(`/api/factory/projects/${p.id}/stop`, {}); loadFactory(); } }, 'Dừng'));
+  return h('div', { class: 'proj' },
+    h('div', { class: 'row spread' }, h('b', {}, p.title), h('span', { class: `tag ${tone}` }, label)),
+    p.note ? h('div', { class: 'tag bad' }, p.note) : null,
+    p.waiting ? h('div', { class: 'tag warn' }, 'Đang chờ bạn duyệt một thao tác: mở lượt chạy bên dưới') : null,
+    h('div', { class: 'stages' }, ...p.runs.map((r) => h('button', { class: 'chip', type: 'button', onclick: () => openRunFromFactory(r.runId) }, r.stage))),
+    p.plan ? h('details', { open: p.stage === 'planned' }, h('summary', {}, 'Kế hoạch'), h('pre', { class: 'plan' }, p.plan)) : null,
+    p.stage === 'ready' ? h('p', {}, `Thư mục dự án: ${p.dir}. Xem lại bằng review/cso rồi tự quyết định đẩy lên GitHub hoặc deploy.`) : null,
+    ...act);
+}
+
+async function loadFactory() {
+  try {
+    const f = await api('/api/factory');
+    $('#fac-budget').textContent = `Ngân sách token: ${fmt(f.tokensUsed)} / ${fmt(f.tokenCap)}`;
+    $('#fac-budget').className = `pill ${f.tokensUsed > f.tokenCap * 0.8 ? 'warn' : ''}`;
+    if (document.activeElement?.id !== 'sch-hours' && document.activeElement?.id !== 'sch-max') {
+      $('#sch-on').checked = f.schedule.enabled; $('#sch-hours').value = f.schedule.everyHours; $('#sch-max').value = f.schedule.maxPerDay;
+    }
+    const ops = $('#ops');
+    ops.replaceChildren(...(f.opportunities.length ? f.opportunities.map(renderOp) : [h('p', {}, 'Chưa có cơ hội. Bấm "Nghiên cứu ngay".')]));
+    const typing = document.activeElement && $('#projects').contains(document.activeElement);
+    if (!typing) $('#projects').replaceChildren(...(f.projects.length ? f.projects.map(renderProject) : [h('p', {}, 'Chưa có dự án.')]));
+  } catch (e) { $('#fac-msg').textContent = e.message; }
+}
+$('#fac-research').addEventListener('click', async () => {
+  $('#fac-msg').textContent = '';
+  try { const r = await api('/api/factory/research', { focus: $('#fac-focus').value }); $('#fac-msg').textContent = 'Đang nghiên cứu… xem tiến trình ở tab Lệnh.'; await refresh(); void r; } catch (e) { $('#fac-msg').textContent = e.message; }
+});
+$('#sch-save').addEventListener('click', async () => {
+  try { await api('/api/factory/schedule', { enabled: $('#sch-on').checked, everyHours: Number($('#sch-hours').value), maxPerDay: Number($('#sch-max').value), focus: $('#fac-focus').value }); $('#fac-msg').textContent = 'Đã lưu lịch (chỉ chạy khi máy chủ đang mở).'; } catch (e) { $('#fac-msg').textContent = e.message; }
+});

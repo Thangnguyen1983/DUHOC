@@ -23,13 +23,20 @@ const UNAVAILABLE = {
 const SAFETY_SKILLS = new Set(['careful', 'freeze', 'guard', 'unfreeze']);
 
 // Skill được cấp công cụ trình duyệt headless (Playwright).
-const BROWSER = new Set(['browse', 'scrape', 'qa', 'qa-only', 'design-review', 'devex-review', 'canary']);
+const BROWSER = new Set(['browse', 'scrape', 'qa', 'qa-only', 'design-review', 'devex-review', 'canary', 'market-research']);
+
+// Skill dùng công cụ tìm kiếm web của API (kết quả là dữ liệu không tin cậy).
+const WEB_SEARCH = new Set(['market-research']);
+
+// Skill của Nhà máy: chỉ chạy qua quy trình Nhà máy (có duyệt kế hoạch), không chạy tay.
+const FACTORY_ONLY = new Set(['factory-build']);
 
 // Skill không được ghi file hay chạy lệnh ghi: chỉ đọc.
 const READ_ONLY = new Set([
   'cso', 'health', 'benchmark', 'benchmark-models', 'deslop-shared-libs', 'landing-report',
   'test-audit', 'retro', 'context-restore', 'codex', 'claude-code',
   'qa-only', 'canary', 'browse', 'scrape', 'design-review', 'devex-review',
+  'market-research', 'app-plan',
 ]);
 
 // Skill có tác động ra ngoài/không đảo ngược: mọi lệnh không-chỉ-đọc luôn hỏi, kể cả chế độ tự sửa.
@@ -83,11 +90,13 @@ export function loadSkills(dir = DIR) {
       systemPromptCore: raw.systemPromptCore || '',
       readOnly: READ_ONLY.has(name),
       browser: BROWSER.has(name),
+      webSearch: WEB_SEARCH.has(name),
+      factoryOnly: FACTORY_ONLY.has(name),
       alwaysAsk: ALWAYS_ASK.has(name),
       next: NEXT[name] || [],
-      executable: !unavailable && !safety,
+      executable: !unavailable && !safety && !FACTORY_ONLY.has(name),
       kind: safety ? 'safety' : 'run',
-      unavailableReason: safety ? 'Điều khiển ở bảng An toàn, không phải một lượt chạy.' : unavailable || null,
+      unavailableReason: safety ? 'Điều khiển ở bảng An toàn, không phải một lượt chạy.' : FACTORY_ONLY.has(name) ? 'Chỉ chạy trong Nhà máy, sau khi bạn duyệt kế hoạch.' : unavailable || null,
     });
   }
   return out;
