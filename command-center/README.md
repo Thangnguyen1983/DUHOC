@@ -6,7 +6,7 @@
 
 Cần [Node.js 20+](https://nodejs.org). Clone repo, rồi:
 
-- **Mac/Linux:** `./start.sh`  ·  **Windows:** nhấp đôi `start.bat`  ·  hoặc `node server.mjs`
+- **Mac/Linux:** mở Terminal trong thư mục `command-center` và chạy `bash start.sh` (dùng `bash` vì tải ZIP làm mất quyền thực thi)  ·  **Windows:** nhấp đôi `start.bat`  ·  hoặc `node server.mjs`
 - Máy chủ in ra **đường link** dạng `http://127.0.0.1:4577/?token=…` và tự mở trình duyệt. Link **cố định** (token lưu ở `data/token`), lưu làm dấu trang được. Link chỉ mở được trên chính máy đang chạy, đó là chủ ý: ứng dụng có thể chạy lệnh trên máy bạn nên không nên công khai ra Internet.
 - **Nhập khoá API:** bấm nút **Khoá API** ở góc phải giao diện, hoặc mở tệp `command-center/.env.local` và điền `ANTHROPIC_API_KEY=sk-ant-...`. Khoá nằm trong tệp đó (quyền 600, đã loại khỏi git), không bao giờ được gửi lại cho trình duyệt hay ghi vào nhật ký.
 - Tuỳ chọn: `CC_MODEL` (mặc định claude-sonnet-5-5), `CC_ROOTS` (thư mục được phép, cách nhau bằng `:`), `PORT` (4577).
