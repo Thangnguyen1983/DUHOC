@@ -151,3 +151,17 @@ test('nhập khoá API trong giao diện: lưu 0600, không bao giờ trả lạ
   await app.close();
   if (saved) process.env.ANTHROPIC_API_KEY = saved; else delete process.env.ANTHROPIC_API_KEY;
 });
+
+test('Workspace ID: gửi header anthropic-workspace-id khi đã đặt, không khi để trống', async () => {
+  const seen = [];
+  const mock = (await import('node:http')).createServer((req, res) => { seen.push(req.headers['anthropic-workspace-id'] || null); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ content: [{ type: 'tool_use', id: 'f', name: 'finish', input: { status: 'DONE', report: 'ok' } }], usage: { input_tokens: 1, output_tokens: 1 } })); });
+  await new Promise((r) => mock.listen(0, '127.0.0.1', r));
+  const { anthropicProvider } = await import('../lib/provider.mjs');
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (u, o) => realFetch(`http://127.0.0.1:${mock.address().port}/`, o);
+  try {
+    await anthropicProvider({ apiKey: 'k'.repeat(30), model: 'm', workspaceId: 'wrkspc_abc-123' }).complete({ system: 's', tools: [], messages: [], maxTokens: 5 });
+    await anthropicProvider({ apiKey: 'k'.repeat(30), model: 'm' }).complete({ system: 's', tools: [], messages: [], maxTokens: 5 });
+  } finally { globalThis.fetch = realFetch; mock.close(); }
+  assert.deepEqual(seen, ['wrkspc_abc-123', null]);
+});

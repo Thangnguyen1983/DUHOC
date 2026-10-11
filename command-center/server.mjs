@@ -9,7 +9,7 @@ import { loadSkills, suggest, parseCommand, PIPELINES } from './lib/skills.mjs';
 import { RunManager } from './lib/runs.mjs';
 import { Factory } from './lib/factory.mjs';
 import { anthropicProvider, noKeyProvider } from './lib/provider.mjs';
-import { loadEnvFile, setEnvVar, keyHint, validKey } from './lib/env.mjs';
+import { loadEnvFile, setEnvVar, keyHint, validKey, validWorkspaceId } from './lib/env.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(HERE, 'public');
@@ -19,6 +19,7 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider: initial
   // Nhà cung cấp mô hình có thể đổi nóng khi bạn nhập khoá trong giao diện.
   let inner = initialProvider;
   let currentKey = process.env.ANTHROPIC_API_KEY || null;
+  let currentWs = process.env.ANTHROPIC_WORKSPACE_ID || null;
   const provider = { get name() { return inner.name; }, get model() { return inner.model; }, complete: (a) => inner.complete(a) };
   const skills = loadSkills();
   const allowedRoots = (roots || [path.resolve(HERE, '..')]).map((r) => fs.realpathSync(r));
@@ -147,17 +148,27 @@ export function createApp({ dataDir = path.join(HERE, 'data'), provider: initial
         }
         return json(res, 404, { error: 'Không tìm thấy.' });
       }
-      if (url.pathname === '/api/settings' && req.method === 'GET') return json(res, 200, { hasKey: provider.name !== 'none', keyHint: provider.name === 'none' ? null : keyHint(currentKey), model: provider.model, envFile: path.basename(envFile) });
+      if (url.pathname === '/api/settings' && req.method === 'GET') return json(res, 200, { hasKey: provider.name !== 'none', keyHint: provider.name === 'none' ? null : keyHint(currentKey), model: provider.model, workspaceId: currentWs, envFile: path.basename(envFile) });
       if (url.pathname === '/api/settings/key' && req.method === 'POST') {
         const b = await readBody(req);
-        const k = String(b.apiKey || '').trim();
-        if (k && !validKey(k)) return json(res, 400, { error: 'Khoá không hợp lệ (20-300 ký tự chữ, số, - hoặc _).' });
-        setEnvVar(envFile, 'ANTHROPIC_API_KEY', k);
-        currentKey = k || null;
-        if (k) process.env.ANTHROPIC_API_KEY = k; else delete process.env.ANTHROPIC_API_KEY;
-        inner = k ? anthropicProvider({ apiKey: k, model: process.env.CC_MODEL || 'claude-sonnet-5-5' }) : noKeyProvider();
-        manager.audit('-', k ? 'api_key_set' : 'api_key_cleared', {});
-        return json(res, 200, { hasKey: !!k, keyHint: keyHint(k), model: provider.model });
+        if ('apiKey' in b) {
+          const k = String(b.apiKey || '').trim();
+          if (k && !validKey(k)) return json(res, 400, { error: 'Khoá không hợp lệ (20-300 ký tự chữ, số, - hoặc _).' });
+          setEnvVar(envFile, 'ANTHROPIC_API_KEY', k);
+          currentKey = k || null;
+          if (k) process.env.ANTHROPIC_API_KEY = k; else delete process.env.ANTHROPIC_API_KEY;
+          manager.audit('-', k ? 'api_key_set' : 'api_key_cleared', {});
+        }
+        if ('workspaceId' in b) {
+          const w = String(b.workspaceId || '').trim();
+          if (w && !validWorkspaceId(w)) return json(res, 400, { error: 'Workspace ID không hợp lệ (3-100 ký tự chữ, số, - hoặc _).' });
+          setEnvVar(envFile, 'ANTHROPIC_WORKSPACE_ID', w);
+          currentWs = w || null;
+          if (w) process.env.ANTHROPIC_WORKSPACE_ID = w; else delete process.env.ANTHROPIC_WORKSPACE_ID;
+          manager.audit('-', 'workspace_id_set', {});
+        }
+        inner = currentKey ? anthropicProvider({ apiKey: currentKey, model: process.env.CC_MODEL || 'claude-sonnet-5-5', workspaceId: currentWs }) : noKeyProvider();
+        return json(res, 200, { hasKey: !!currentKey, keyHint: keyHint(currentKey), model: provider.model, workspaceId: currentWs });
       }
       let m = url.pathname.match(/^\/api\/runs\/([\w]+)(?:\/(stream|respond|stop|report))?$/);
       if (m) {
@@ -231,7 +242,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const envFile = path.join(HERE, '.env.local');
   loadEnvFile(envFile);
   const key = process.env.ANTHROPIC_API_KEY;
-  const provider = key ? anthropicProvider({ apiKey: key, model: process.env.CC_MODEL || 'claude-sonnet-5-5' }) : noKeyProvider();
+  const provider = key ? anthropicProvider({ apiKey: key, model: process.env.CC_MODEL || 'claude-sonnet-5-5', workspaceId: process.env.ANTHROPIC_WORKSPACE_ID || null }) : noKeyProvider();
   const roots = process.env.CC_ROOTS ? process.env.CC_ROOTS.split(path.delimiter) : undefined;
   // Token cố định (lưu trong data/token) để đường link luôn giống nhau và dùng được làm dấu trang.
   const tokenFile = path.join(HERE, 'data', 'token');

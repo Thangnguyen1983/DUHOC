@@ -29,3 +29,4 @@ export function setEnvVar(file, key, value) {
 
 export const keyHint = (k) => (k ? `…${String(k).slice(-4)}` : null);
 export const validKey = (k) => typeof k === 'string' && /^[\w-]{20,300}$/.test(k);
+export const validWorkspaceId = (w) => typeof w === 'string' && /^[\w-]{3,100}$/.test(w);

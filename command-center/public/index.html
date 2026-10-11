@@ -70,8 +70,9 @@
   <h3>Khoá API Anthropic</h3>
   <p id="key-status"></p>
   <label>Dán khoá mới (bắt đầu bằng sk-ant-…)<input id="key-input" type="password" autocomplete="off" spellcheck="false"></label>
+  <label>Workspace ID (chỉ cần nếu báo lỗi "not scoped to a workspace")<input id="ws-input" autocomplete="off" spellcheck="false" placeholder="wrkspc_… hoặc mã workspace trong Console"></label>
   <p><small>Khoá được lưu trong tệp <code>.env.local</code> trên máy chạy ứng dụng (quyền chỉ chủ sở hữu đọc, đã loại khỏi git) và không bao giờ được gửi lại cho trình duyệt.</small></p>
-  <div class="row"><button id="key-save" type="button">Lưu khoá</button><button id="key-clear" class="danger" type="button">Xoá khoá</button><button id="key-close" class="ghost" type="button">Đóng</button></div>
+  <div class="row"><button id="key-save" type="button">Lưu</button><button id="key-clear" class="danger" type="button">Xoá khoá</button><button id="key-close" class="ghost" type="button">Đóng</button></div>
   <p id="key-msg" role="status"></p>
 </dialog>
 <dialog id="dir-dialog">

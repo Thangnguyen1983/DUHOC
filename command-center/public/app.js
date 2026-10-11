@@ -314,13 +314,14 @@ $('#sch-save').addEventListener('click', async () => {
 const keyDlg = $('#key-dialog');
 async function loadKeyStatus() {
   const k = await api('/api/settings');
-  $('#key-status').textContent = k.hasKey ? `Đã cấu hình khoá ${k.keyHint} · mô hình ${k.model}` : 'Chưa có khoá: agent chưa thể chạy.';
+  $('#key-status').textContent = k.hasKey ? `Đã cấu hình khoá ${k.keyHint} · mô hình ${k.model}${k.workspaceId ? ` · workspace ${k.workspaceId}` : ''}` : 'Chưa có khoá: agent chưa thể chạy.';
+  $('#ws-input').value = k.workspaceId || '';
 }
 $('#key-btn').addEventListener('click', () => { $('#key-msg').textContent = ''; $('#key-input').value = ''; loadKeyStatus().then(() => keyDlg.showModal()); });
 $('#provider').addEventListener('click', () => $('#key-btn').click());
 $('#key-close').addEventListener('click', () => keyDlg.close());
 async function saveKey(value) {
-  try { await api('/api/settings/key', { apiKey: value }); $('#key-input').value = ''; await loadKeyStatus(); await refresh(); $('#key-msg').textContent = value ? 'Đã lưu.' : 'Đã xoá.'; } catch (e) { $('#key-msg').textContent = e.message; }
+  try { await api('/api/settings/key', { ...(value !== undefined && value !== null ? { apiKey: value } : {}), workspaceId: $('#ws-input').value.trim() }); $('#key-input').value = ''; await loadKeyStatus(); await refresh(); $('#key-msg').textContent = value ? 'Đã lưu.' : 'Đã xoá.'; } catch (e) { $('#key-msg').textContent = e.message; }
 }
-$('#key-save').addEventListener('click', () => saveKey($('#key-input').value.trim()));
+$('#key-save').addEventListener('click', () => saveKey($('#key-input').value.trim() || null));
 $('#key-clear').addEventListener('click', () => { if (confirm('Xoá khoá API đã lưu?')) saveKey(''); });

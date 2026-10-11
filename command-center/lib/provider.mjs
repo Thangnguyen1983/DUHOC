@@ -1,7 +1,7 @@
 // Nhà cung cấp mô hình. Thật: API Anthropic Messages. Giả (cho kiểm thử): kịch bản định sẵn.
 const API = 'https://api.anthropic.com/v1/messages';
 
-export function anthropicProvider({ apiKey, model }) {
+export function anthropicProvider({ apiKey, model, workspaceId = null }) {
   return {
     name: 'anthropic',
     model,
@@ -9,7 +9,7 @@ export function anthropicProvider({ apiKey, model }) {
       const res = await fetch(API, {
         method: 'POST',
         signal,
-        headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', ...(workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}) },
         body: JSON.stringify({ model, max_tokens: maxTokens, system, tools, messages }),
       });
       const body = await res.json().catch(() => ({}));
