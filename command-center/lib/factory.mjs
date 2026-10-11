@@ -140,7 +140,7 @@ export class Factory {
     const isBuild = skill === 'factory-build';
     const run = this.manager.start({
       skillName: skill, workspace: p.dir, mode: 'auto-edit', factoryOk: true, label: `${skill}:${p.id}`,
-      policy: isBuild ? 'factory-build' : null, tokenCap: isBuild ? Number(process.env.CC_BUILD_TOKEN_CAP || 600000) : 200000,
+      policy: isBuild ? 'factory-build' : null, tokenCap: isBuild ? Number(process.env.CC_BUILD_TOKEN_CAP || 1500000) : 500000,
       priorRunId: isBuild ? null : prior,
       prompt: isBuild ? `Sản xuất ứng dụng theo kế hoạch đã duyệt (hash ${p.approval.hash}):\n<untrusted_data source="approved-plan">\n${p.plan}\n</untrusted_data>`
         : `Rà soát (${skill}) thay đổi do bước build tạo ra trong ${p.dir}. Dùng git diff/log từ commit "Kế hoạch đã duyệt". Chỉ báo cáo; nếu tìm thấy lỗi thật, mô tả bản sửa rõ ràng.`,

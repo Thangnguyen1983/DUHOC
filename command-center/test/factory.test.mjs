@@ -165,3 +165,35 @@ test('Workspace ID: gửi header anthropic-workspace-id khi đã đặt, không 
   } finally { globalThis.fetch = realFetch; mock.close(); }
   assert.deepEqual(seen, ['wrkspc_abc-123', null]);
 });
+
+test('prompt caching + quy đổi token + cảnh báo ngân sách khi gần trần', async () => {
+  const { weighted } = await import('../lib/runs.mjs');
+  assert.equal(weighted({ input: 100, output: 10, cacheWrite: 100, cacheRead: 1000 }), 100 + 125 + 100 + 50);
+  // provider gửi cache_control và đọc usage đệm
+  const bodies = [];
+  const mock = (await import('node:http')).createServer((req, res) => { let d = ''; req.on('data', (c) => { d += c; }); req.on('end', () => { bodies.push(JSON.parse(d)); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ content: [], usage: { input_tokens: 5, output_tokens: 2, cache_creation_input_tokens: 40, cache_read_input_tokens: 400 } })); }); });
+  await new Promise((r) => mock.listen(0, '127.0.0.1', r));
+  const { anthropicProvider } = await import('../lib/provider.mjs');
+  const realFetch = globalThis.fetch; globalThis.fetch = (u, o) => realFetch(`http://127.0.0.1:${mock.address().port}/`, o);
+  let usage;
+  try { ({ usage } = await anthropicProvider({ apiKey: 'k'.repeat(30), model: 'm' }).complete({ system: 'S', tools: [], messages: [{ role: 'user', content: 'a' }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: 'r' }] }], maxTokens: 5 })); } finally { globalThis.fetch = realFetch; mock.close(); }
+  assert.equal(bodies[0].system[0].cache_control.type, 'ephemeral');
+  assert.equal(bodies[0].messages.at(-1).content.at(-1).cache_control.type, 'ephemeral');
+  assert.equal(bodies[0].messages[0].content, 'a', 'tin nhắn cũ không bị đổi');
+  assert.deepEqual(usage, { input: 5, output: 2, cacheWrite: 40, cacheRead: 400 });
+
+  // cảnh báo ở 80% trần: tin nhắn tiếp theo có CẢNH BÁO NGÂN SÁCH
+  let sawWarn = false;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-w-')); const ws = path.join(dir, 'p'); fs.mkdirSync(ws);
+  const app = createApp({ dataDir: dir, roots: [dir], token: 'tok'.repeat(10), provider: scriptedProvider([
+    [tu('list_dir', {}, 'a')],
+    [tu('list_dir', {}, 'b')],
+    (msgs) => { sawWarn = JSON.stringify(msgs.at(-1).content).includes('CẢNH BÁO NGÂN SÁCH'); return fin('xong sớm'); },
+  ]) });
+  await app.listen();
+  const { id } = app.manager.start({ skillName: 'cso', prompt: 'x', workspace: ws, tokenCap: 4000 }); // mỗi lượt giả lập tốn 2000 quy đổi
+  await waitFor(() => app.manager.get(id).status === 'done');
+  assert.ok(sawWarn, 'agent phải được cảnh báo trước khi chạm trần');
+  assert.equal(app.manager.get(id).verdict, 'DONE');
+  await app.close();
+});

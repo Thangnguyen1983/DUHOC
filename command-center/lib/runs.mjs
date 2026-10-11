@@ -9,6 +9,8 @@ import { redact } from './safety.mjs';
 import { BrowserSession } from './browser.mjs';
 
 const MAX_TURNS = 40;
+// Quy đổi theo giá: đầu vào 1, ghi đệm 1.25, đọc đệm 0.1, đầu ra 5 (đơn vị "token quy đổi").
+export const weighted = (u = {}) => Math.round((u.input || 0) + (u.cacheWrite || 0) * 1.25 + (u.cacheRead || 0) * 0.1 + (u.output || 0) * 5);
 const MAX_TOKENS_OUT = 4096;
 
 export class RunManager {
@@ -77,7 +79,7 @@ export class RunManager {
     fs.mkdirSync(path.join(this.runsDir, id), { recursive: true });
     const run = {
       id, skill: skillName, prompt, workspace: realWs, mode, status: 'running', verdict: null,
-      createdAt: new Date().toISOString(), priorRunId, pipeline, policy, label, tokens: 0, tokenCap: tokenCap || Number(process.env.CC_RUN_TOKEN_CAP || 150000), events: [], listeners: new Set(),
+      createdAt: new Date().toISOString(), priorRunId, pipeline, policy, label, tokens: 0, tokenCap: tokenCap || Number(process.env.CC_RUN_TOKEN_CAP || 400000), warned: false, events: [], listeners: new Set(),
       pending: null, abort: new AbortController(),
     };
     this.runs.set(id, run);
@@ -161,6 +163,11 @@ export class RunManager {
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       if (run.abort.signal.aborted) return;
+      // Kiểm trần TRƯỚC khi gọi: lượt nộp báo cáo sau cảnh báo luôn được xử lý, không bị mất.
+      if (run.tokens > run.tokenCap) {
+        this.#emit(run, 'assistant', { text: `Dừng: vượt ngân sách ${run.tokenCap} token quy đổi.` });
+        return this.#finish(run, 'done', 'BLOCKED', `Vượt ngân sách token (${run.tokens}/${run.tokenCap}).`);
+      }
       let resp;
       try {
         this.audit(run.id, 'model_call', { turn, messages: messages.length });
@@ -169,14 +176,10 @@ export class RunManager {
         if (run.abort.signal.aborted) return;
         return this.#finish(run, 'error', null, `Lỗi gọi mô hình: ${e.message}`);
       }
-      run.tokens += (resp.usage?.input || 0) + (resp.usage?.output || 0);
+      run.tokens += weighted(resp.usage);
       messages.push({ role: 'assistant', content: resp.content });
       for (const b of resp.content) {
         if (b.type === 'text' && b.text.trim()) this.#emit(run, 'assistant', { text: redact(b.text).text });
-      }
-      if (run.tokens > run.tokenCap) {
-        this.#emit(run, 'assistant', { text: `Dừng: vượt ngân sách ${run.tokenCap} token.` });
-        return this.#finish(run, 'done', 'BLOCKED', `Vượt ngân sách token (${run.tokens}/${run.tokenCap}).`);
       }
       const uses = resp.content.filter((b) => b.type === 'tool_use');
       if (!uses.length && resp.stopReason === 'pause_turn') continue; // tìm kiếm web chưa xong: gọi tiếp
@@ -204,6 +207,11 @@ export class RunManager {
           ? [{ type: 'text', text: shown.text }, { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: r.image.base64 } }]
           : shown.text;
         results.push({ type: 'tool_result', tool_use_id: u.id, content, is_error: !!r.isError });
+      }
+      if (!run.warned && run.tokens > run.tokenCap * 0.8) {
+        run.warned = true;
+        results.push({ type: 'text', text: `CẢNH BÁO NGÂN SÁCH: đã dùng ${run.tokens}/${run.tokenCap} token quy đổi. Đừng đọc thêm. Hãy gọi finish ngay với báo cáo từ những gì đã thu thập, ghi rõ phần nào chưa kiểm tra.` });
+        this.#emit(run, 'assistant', { text: `Gần hết ngân sách (${run.tokens}/${run.tokenCap}): yêu cầu agent kết thúc báo cáo.` });
       }
       messages.push({ role: 'user', content: results });
     }

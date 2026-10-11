@@ -52,6 +52,6 @@ Nghiên cứu thị trường → kế hoạch → **bạn duyệt** → tự s�
 4. **Sản xuất tự động** (`factory-build` → `review` → `cso`), chạy trong thư mục dự án: ghi file tự động; tự chạy `npm ci/install --ignore-scripts`, `npm test`, `npm run build|lint|test`, `node ...`, `git add/commit` cục bộ. Mọi lệnh khác (kể cả `git push`, `npm publish`, `curl`, `npx`) vẫn **chờ bạn duyệt**. Bước nào BLOCKED thì chuỗi dừng.
 5. **Giao ra ngoài** (push, PR, deploy) không thuộc chuỗi tự động: bạn tự quyết sau khi xem kết quả.
 
-Ngân sách: `CC_FACTORY_TOKEN_CAP` (mặc định 2.000.000 token cho toàn Nhà máy), `CC_BUILD_TOKEN_CAP` (600.000/lượt build), `CC_RUN_TOKEN_CAP` (150.000/lượt khác). Hết ngân sách thì không bắt đầu việc mới.
+Ngân sách tính theo "token quy đổi" (đầu vào 1, ghi bộ nhớ đệm 1,25, đọc bộ nhớ đệm 0,1, đầu ra 5; đã bật prompt caching): `CC_RUN_TOKEN_CAP` (mặc định 400.000/lượt, đặt được trong `.env.local`), `CC_BUILD_TOKEN_CAP` (1.500.000/lượt build), `CC_FACTORY_TOKEN_CAP` (2.000.000 cho cả Nhà máy). Ở 80% trần, agent được nhắc nộp báo cáo ngay; vượt trần thì không gọi thêm. Hết ngân sách Nhà máy thì không bắt đầu việc mới.
 
 Giới hạn trung thực: "nhu cầu cao" là suy luận từ tín hiệu web công khai, không phải bảo đảm thương mại; hãy tự kiểm tra các nguồn trước khi duyệt. Cài gói npm chạy trong máy bạn (đã tắt script cài đặt nhưng vẫn là mã của bên thứ ba); chỉ dùng trên máy/ môi trường bạn chấp nhận rủi ro.
